@@ -149,3 +149,41 @@ begin
   raise notice 'ok: RLS enabled with % policies', n_policies;
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- ADR 0004/0007 — approval claim helper `is_approved()` reads app_metadata.
+--   Simulate the request JWT via the `request.jwt.claims` GUC (what auth.jwt()
+--   reads) and assert the helper fails CLOSED when the claim is absent/false and
+--   true only when app_metadata.approved is explicitly true.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  -- No JWT at all => not approved (fail closed).
+  perform set_config('request.jwt.claims', NULL, true);
+  if public.is_approved() then
+    raise exception 'TEST FAILED: is_approved() true with no JWT';
+  end if;
+
+  -- JWT present but no approval claim => not approved.
+  perform set_config('request.jwt.claims', '{"app_metadata":{}}', true);
+  if public.is_approved() then
+    raise exception 'TEST FAILED: is_approved() true with no approved claim';
+  end if;
+
+  -- Explicitly false => not approved.
+  perform set_config('request.jwt.claims', '{"app_metadata":{"approved":false}}', true);
+  if public.is_approved() then
+    raise exception 'TEST FAILED: is_approved() true when approved=false';
+  end if;
+
+  -- Explicitly true => approved.
+  perform set_config('request.jwt.claims', '{"app_metadata":{"approved":true}}', true);
+  if not public.is_approved() then
+    raise exception 'TEST FAILED: is_approved() false when approved=true';
+  end if;
+
+  -- Clean up the simulated claims.
+  perform set_config('request.jwt.claims', NULL, true);
+  raise notice 'ok: is_approved() reads app_metadata.approved and fails closed';
+end;
+$$;

@@ -39,25 +39,29 @@ The student using Syndes to study Modules and complete Quizzes.
 _Avoid_: User, profile
 
 **Teacher**:
-The person who prepares and reviews Module content before Learners use it.
+The person who prepares and reviews Module content before Learners use it. A Teacher may also study Modules as a Learner.
 _Avoid_: Author, admin
 
 **Administrator**:
-A person authorized to grant or remove Teacher access.
+A person authorized to approve Account access and grant or remove Teacher access. An Administrator may also teach and study.
 _Avoid_: Teacher
 
 **Account**:
-A person's Syndes identity, used to determine their access to learning and teaching activities.
+A person's Syndes identity. Approval grants learning access; Teacher permission is separate.
 _Avoid_: Profile
+
+**Pending Account**:
+An Account awaiting an Administrator's approval. Its owner can sign in but cannot study Modules, including local ones.
+_Avoid_: Guest
 
 ## Place and state
 
 **Library**:
-The set of Modules stored on this device.
+The set of Modules available to an Account on this device.
 _Avoid_: Catalog, store
 
 **Progress**:
-A Learner's saved place and answers for a Module, kept on this device only.
+A Learner's saved place and answers for a Module, associated with that Learner's Account and kept on this device only.
 _Avoid_: Profile, history, account data
 
 **Continue**:
@@ -75,7 +79,7 @@ _Avoid_: Downloaded, cached, synced
 ## Teacher side
 
 **Draft**:
-A Teacher's unsealed Module, saved on the Teacher's device. It holds correct answers in the clear and never reaches a Learner.
+A Teacher's unsealed Module, belonging to that Teacher's Account. It holds correct answers in the clear and never reaches a Learner.
 _Avoid_: Unpublished module, work in progress
 
 **Seal**:

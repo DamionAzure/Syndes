@@ -1,5 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { createStoredValue } from "@/lib/local-json-storage";
+import { getStoredValue, type StoredValue } from "@/lib/local-json-storage";
+import { accountScopedKey } from "@/lib/account-scope";
+import { getActiveAccountId, subscribeToActiveAccount } from "@/lib/active-account";
 import {
   EMPTY_PROGRESS,
   PROGRESS_KEY,
@@ -10,26 +12,37 @@ import {
 } from "./progress-store";
 import type { ModuleProgress, ProgressStore } from "./progress-types";
 
-const progressValue = createStoredValue(
-  PROGRESS_KEY,
-  parseProgressStore,
-  EMPTY_PROGRESS,
-);
+/**
+ * The Progress store for the CURRENTLY active Account (ADR 0007). Resolved fresh
+ * on each access so a sign-in/out swaps partitions; `getStoredValue` returns a
+ * stable instance per key, so repeated calls for the same Account are cheap and
+ * keep `useSyncExternalStore` subscriptions stable.
+ */
+function activeProgressValue(): StoredValue<ProgressStore> {
+  const key = accountScopedKey(PROGRESS_KEY, getActiveAccountId());
+  return getStoredValue(key, parseProgressStore, EMPTY_PROGRESS);
+}
 
 /**
- * All saved Progress on this device. The server snapshot is empty, so static
- * HTML never claims that progress exists.
+ * All saved Progress for the active Account on this device. The server snapshot
+ * is empty, so static HTML never claims that progress exists. Re-renders on both
+ * storage changes and Account switches.
  */
 export function useProgressStore(): ProgressStore {
-  return useSyncExternalStore(
-    progressValue.subscribe,
-    progressValue.get,
-    progressValue.getServerSnapshot,
+  // Re-subscribe when the active Account changes by re-reading the scoped value.
+  const accountId = useSyncExternalStore(
+    subscribeToActiveAccount,
+    getActiveAccountId,
+    () => null,
   );
+  // `accountId` participates so the memoized value is recomputed on a switch.
+  void accountId;
+  const value = activeProgressValue();
+  return useSyncExternalStore(value.subscribe, value.get, value.getServerSnapshot);
 }
 
 export function updateProgress(change: (store: ProgressStore) => ProgressStore): void {
-  progressValue.update(change);
+  activeProgressValue().update(change);
 }
 
 export function nowIso(): string {

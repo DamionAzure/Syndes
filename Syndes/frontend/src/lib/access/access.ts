@@ -8,10 +8,21 @@ export type Role = "student" | "teacher" | "admin";
 
 export type AuthSource = "onlineVerified" | "offlineVerified" | "onlineGate" | "studentReadOnly";
 
-export type AuthContext = { role: Role; readOnly: boolean; source: AuthSource };
+export type AuthContext = {
+  role: Role;
+  /** Whether an Administrator has approved this Account for learning (ADR 0004/0007). */
+  approved: boolean;
+  readOnly: boolean;
+  source: AuthSource;
+};
 
-/** The core's own floor: no verifiable session means Student, read-only. */
-export const STUDENT_FLOOR: AuthContext = { role: "student", readOnly: true, source: "studentReadOnly" };
+/** The core's own floor: no verifiable session means Student, read-only, unapproved. */
+export const STUDENT_FLOOR: AuthContext = {
+  role: "student",
+  approved: false,
+  readOnly: true,
+  source: "studentReadOnly",
+};
 
 const ROLES: readonly Role[] = ["student", "teacher", "admin"];
 const SOURCES: readonly AuthSource[] = ["onlineVerified", "offlineVerified", "onlineGate", "studentReadOnly"];
@@ -24,12 +35,19 @@ export function parseAuthContext(raw: unknown): AuthContext {
   const source = SOURCES.find((candidate) => candidate === record["source"]);
   const readOnly = record["readOnly"];
   if (!role || !source || typeof readOnly !== "boolean") return STUDENT_FLOOR;
-  return { role, readOnly, source };
+  // Approval must be an explicit boolean; anything else fails closed to false.
+  const approved = record["approved"] === true;
+  return { role, approved, readOnly, source };
 }
 
 /** Teach is for a verified Teacher or Admin who is not in the read-only floor. */
 export function canTeach(context: AuthContext): boolean {
   return (context.role === "teacher" || context.role === "admin") && !context.readOnly;
+}
+
+/** May study: an approved Account not in the read-only floor (ADR 0004/0007). */
+export function canLearn(context: AuthContext): boolean {
+  return context.approved && !context.readOnly;
 }
 
 export const TEACH_PATH = "/teach";

@@ -75,11 +75,20 @@ impl Role {
 
 /// The claims read ONLY after a token's signature and `exp` have been verified.
 /// Nothing outside a successful `verify::verify_jwt` constructs this.
+///
+/// `role` and `approved` are both read from the token's `app_metadata` object —
+/// the only place Supabase lets a project attach custom, admin-controlled claims
+/// (ADR 0004). The top-level `role` claim Supabase issues is the Postgres role
+/// (`authenticated`/`anon`), NOT the app role, so it is deliberately ignored.
 #[derive(Debug, Clone)]
 pub struct VerifiedClaims {
     pub sub: String,
     pub email: String,
     pub role: Role,
+    /// Whether an Administrator has approved this Account for learning access
+    /// (ADR 0004: signing in never grants access by itself; ADR 0007: approved
+    /// sign-in is required even to browse). Carried in `app_metadata.approved`.
+    pub approved: bool,
     pub exp: i64,
 }
 
@@ -106,6 +115,10 @@ pub enum AuthSource {
 pub struct AuthContext {
     /// Effective role to scope the UI.
     pub role: Role,
+    /// Whether this Account is approved for learning access (ADR 0004/0007).
+    /// A pending (unapproved) Account can sign in but cannot study any Module,
+    /// local or published. False in the Student-read-only floor.
+    pub approved: bool,
     /// True in the Student-read-only fallback (offline + unverifiable).
     pub read_only: bool,
     /// Provenance of this decision.
@@ -215,49 +228,86 @@ pub(crate) fn verify_cached_role(store: &SessionStore) -> Result<VerifiedClaims,
 /// (Req 4, 6). `require_privileged` indicates the caller is attempting a
 /// Teacher/Admin action.
 ///
-/// Ladder (strictly descending, never looser):
-///   1. Layer 2 offline verify succeeds  => OfflineVerified (full trusted role).
-///   2. verify fails (any cause)          => Layer 1 online gate re-check.
-///        gate Confirmed(role)            => OnlineGate.
-///        gate Unreachable                => fall through.
-///   3. floor                             => StudentReadOnly ("Connect to continue").
+/// Ladder depends on `require_privileged` (ADR 0004):
+///
+/// PRIVILEGED actions ("Teacher/Administrator actions require a FRESH ONLINE
+/// check of current authorization"): try the online gate FIRST. A fresh gate
+/// Confirmed => OnlineGate. If the gate is Unreachable (offline), a privileged
+/// action cannot proceed, so we fall to the Student read-only floor — we do NOT
+/// honour a merely offline-verified token for a privileged action, because that
+/// is not a fresh check. This also means a revoked Teacher is cut off on the
+/// next privileged action once online, bounded only by connectivity (ADR 0004).
+///
+/// NON-PRIVILEGED access (a Learner studying): offline is first-class (ADR 0004:
+/// "Learners may continue studying offline after sign-in"; ADR 0007: approved
+/// Learners study offline until sign-out). So try offline verify first and only
+/// fall to the gate / floor if it fails.
 ///
 /// Never returns a role sourced from the loose column (Req 4.4, 6.4).
 pub fn resolve_access(state: &AuthState, require_privileged: bool) -> AuthContext {
-    // --- Layer 2: offline JWT verify (trusted) ---
+    // --- Privileged: the online gate is MANDATORY and comes FIRST (fresh check) ---
+    if require_privileged {
+        if let Ok(Some(session)) = state.store.load_cached_session() {
+            if let GateOutcome::Confirmed { role, approved } =
+                state.gate.recheck(&session.access_token)
+            {
+                // A confirmed privileged role is a full grant; a confirmed
+                // non-privileged role is scoped read-only for the privileged action.
+                let read_only = !role.is_privileged();
+                return AuthContext {
+                    role,
+                    approved,
+                    read_only,
+                    source: AuthSource::OnlineGate,
+                };
+            }
+        }
+        // Gate unreachable / no session: a privileged action gets NO offline
+        // shortcut. Fall through to the Student read-only floor below. An
+        // offline-verified token is deliberately NOT honoured here — it is not a
+        // fresh check (ADR 0004).
+        return STUDENT_FLOOR_CTX;
+    }
+
+    // --- Non-privileged (learner): Layer 2 offline JWT verify (trusted) first ---
     if let Ok(claims) = verify_cached_role(&state.store) {
         return AuthContext {
             role: claims.role,
+            approved: claims.approved,
             read_only: false,
             source: AuthSource::OfflineVerified,
         };
     }
 
-    // --- Layer 1 fallback: online gate re-check (stricter: needs connection) ---
-    // We pass the stored token to the gate so Supabase can re-decide. We do NOT
-    // read the loose role; the gate's answer is authoritative, or it is Unreachable.
+    // --- Learner fallback: online gate re-check (stricter: needs connection) ---
     if let Ok(Some(session)) = state.store.load_cached_session() {
-        if let GateOutcome::Confirmed(role) = state.gate.recheck(&session.access_token) {
-            // A privileged action with a confirmed privileged role is a full
-            // grant; otherwise the UI is scoped to the (non-privileged) role and
-            // privileged writes are read-only.
-            let read_only = require_privileged && !role.is_privileged();
+        if let GateOutcome::Confirmed { role, approved } =
+            state.gate.recheck(&session.access_token)
+        {
             return AuthContext {
                 role,
-                read_only,
+                approved,
+                read_only: false,
                 source: AuthSource::OnlineGate,
             };
         }
     }
 
     // --- Floor: offline + unverifiable => Student read-only ("Connect to continue") ---
-    // NEVER returns the loose cached_session.role here (Req 6.4).
-    AuthContext {
-        role: Role::Student,
-        read_only: true,
-        source: AuthSource::StudentReadOnly,
-    }
+    // NEVER returns the loose cached_session.role here (Req 6.4). The floor is
+    // never approved: an unverifiable Account cannot study (ADR 0004).
+    STUDENT_FLOOR_CTX
 }
+
+/// The Student read-only floor as an AuthContext — offline + unverifiable, never
+/// approved, never privileged. Centralised so both the privileged-gate-miss path
+/// and the learner-fallback path return exactly the same floor.
+const STUDENT_FLOOR_CTX: AuthContext = AuthContext {
+    role: Role::Student,
+    approved: false,
+    read_only: true,
+    source: AuthSource::StudentReadOnly,
+};
 
 #[cfg(test)]
 mod orchestrator_tests {
@@ -294,11 +344,15 @@ mod orchestrator_tests {
         // Token/jwks that cannot verify offline (garbage), so Layer 2 fails and we
         // drop to the gate, which is scripted to confirm Teacher.
         let store = store_with_row("admin", "not.a.jwt", "{\"keys\":[]}");
-        let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Confirmed(Role::Teacher))));
+        let state = AuthState::new(
+            store,
+            Box::new(ScriptGate(GateOutcome::Confirmed { role: Role::Teacher, approved: true })),
+        );
         let ctx = resolve_access(&state, true);
         assert_eq!(ctx.source, AuthSource::OnlineGate);
         // The gate's role is used, NOT the loose "admin" column.
         assert_eq!(ctx.role, Role::Teacher);
+        assert!(ctx.approved);
         assert!(!ctx.read_only);
     }
 
@@ -325,7 +379,10 @@ mod orchestrator_tests {
     #[test]
     fn gate_confirms_student_privileged_action_is_read_only() {
         let store = store_with_row("admin", "not.a.jwt", "{\"keys\":[]}");
-        let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Confirmed(Role::Student))));
+        let state = AuthState::new(
+            store,
+            Box::new(ScriptGate(GateOutcome::Confirmed { role: Role::Student, approved: true })),
+        );
         let ctx = resolve_access(&state, true);
         assert_eq!(ctx.source, AuthSource::OnlineGate);
         assert_eq!(ctx.role, Role::Student);
@@ -400,7 +457,7 @@ mod property_tests {
             confirm in any::<bool>(),
         ) {
             let gate = if confirm {
-                GateOutcome::Confirmed(Role::Teacher)
+                GateOutcome::Confirmed { role: Role::Teacher, approved: true }
             } else {
                 GateOutcome::Unreachable
             };
@@ -455,10 +512,16 @@ mod e2e {
     }
 
     #[derive(Serialize)]
+    struct AppMeta {
+        role: String,
+        approved: bool,
+    }
+
+    #[derive(Serialize)]
     struct Claims {
         sub: String,
         email: String,
-        role: String,
+        app_metadata: AppMeta,
         exp: i64,
     }
 
@@ -470,6 +533,10 @@ mod e2e {
     }
 
     fn mint(role: &str, exp: i64) -> Minted {
+        mint_with_approval(role, true, exp)
+    }
+
+    fn mint_with_approval(role: &str, approved: bool, exp: i64) -> Minted {
         let mut rng = rand::thread_rng();
         let private = RsaPrivateKey::new(&mut rng, 2048).expect("generate RSA key");
         let public = private.to_public_key();
@@ -490,7 +557,7 @@ mod e2e {
         let claims = Claims {
             sub: "u1".to_string(),
             email: "teacher@example.com".to_string(),
-            role: role.to_string(),
+            app_metadata: AppMeta { role: role.to_string(), approved },
             exp,
         };
         let token = encode(&header, &claims, &enc_key).expect("sign token");
@@ -513,17 +580,58 @@ mod e2e {
     }
 
     #[test]
-    fn offline_valid_token_resolves_offline_verified() {
+    fn offline_valid_token_resolves_offline_verified_for_learner() {
         let exp = device_now() + 10 * 24 * 3600; // generous (days), like Spec A
+        let minted = mint("teacher", exp);
+        let store = SessionStore::open_in_memory().unwrap();
+        cache(&store, "teacher", &minted.token, &minted.jwks, exp);
+
+        // NON-privileged (learner) access: offline verify is first-class.
+        let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Unreachable)));
+        let ctx = resolve_access(&state, false);
+        assert_eq!(ctx.source, AuthSource::OfflineVerified);
+        assert_eq!(ctx.role, Role::Teacher);
+        assert!(ctx.approved, "mint() defaults to approved=true");
+        assert!(!ctx.read_only);
+    }
+
+    #[test]
+    fn offline_valid_token_privileged_action_is_refused_without_fresh_online() {
+        // ADR 0004: a privileged action requires a FRESH online check. A perfectly
+        // valid, offline-verifiable cached token is NOT a fresh check, so when the
+        // gate is unreachable the privileged resolution must drop to the floor —
+        // never OfflineVerified.
+        let exp = device_now() + 10 * 24 * 3600;
         let minted = mint("teacher", exp);
         let store = SessionStore::open_in_memory().unwrap();
         cache(&store, "teacher", &minted.token, &minted.jwks, exp);
 
         let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Unreachable)));
         let ctx = resolve_access(&state, true);
+        assert_eq!(
+            ctx.source,
+            AuthSource::StudentReadOnly,
+            "a privileged action offline must not ride an offline-verified token"
+        );
+        assert_eq!(ctx.role, Role::Student);
+        assert!(ctx.read_only);
+    }
+
+    #[test]
+    fn offline_unapproved_token_verifies_but_is_not_approved() {
+        // A validly-signed token whose app_metadata.approved is false: the role is
+        // trusted (OfflineVerified) but the Account is NOT approved, so learner /
+        // teacher gates must refuse it (ADR 0004 pending Account).
+        let exp = device_now() + 10 * 24 * 3600;
+        let minted = mint_with_approval("student", false, exp);
+        let store = SessionStore::open_in_memory().unwrap();
+        cache(&store, "student", &minted.token, &minted.jwks, exp);
+
+        let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Unreachable)));
+        let ctx = resolve_access(&state, false);
         assert_eq!(ctx.source, AuthSource::OfflineVerified);
-        assert_eq!(ctx.role, Role::Teacher);
-        assert!(!ctx.read_only);
+        assert_eq!(ctx.role, Role::Student);
+        assert!(!ctx.approved, "a pending Account must resolve as not approved");
     }
 
     #[test]
@@ -567,10 +675,13 @@ mod e2e {
         let store = SessionStore::open_in_memory().unwrap();
         cache(&store, "teacher", &minted.token, &minted.jwks, exp);
 
-        let state =
-            AuthState::new(store, Box::new(ScriptGate(GateOutcome::Confirmed(Role::Teacher))));
+        let state = AuthState::new(
+            store,
+            Box::new(ScriptGate(GateOutcome::Confirmed { role: Role::Teacher, approved: true })),
+        );
         let ctx = resolve_access(&state, true);
         assert_eq!(ctx.source, AuthSource::OnlineGate);
         assert_eq!(ctx.role, Role::Teacher);
+        assert!(ctx.approved);
     }
 }

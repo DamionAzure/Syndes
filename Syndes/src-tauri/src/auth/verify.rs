@@ -17,15 +17,32 @@ use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use serde::Deserialize;
 
 /// The claims we expect inside the Supabase access token. We decode these only
-/// AFTER the signature verifies. `role` arrives as a raw string and is parsed
-/// into the trusted `Role` separately so an out-of-range value is a
-/// `MalformedToken`, never a silent widening.
+/// AFTER the signature verifies.
+///
+/// IMPORTANT (ADR 0004): Supabase's own top-level `role` claim is the POSTGRES
+/// role (`authenticated`/`anon`), not the Syndes app role. The app role and the
+/// approval flag live in `app_metadata`, which only an Administrator (service
+/// role) can write — never the end user. We therefore read `role`/`approved`
+/// from `app_metadata` and ignore the top-level `role` entirely.
 #[derive(Debug, Deserialize)]
 struct RawClaims {
     sub: String,
     email: String,
-    role: String,
     exp: i64,
+    #[serde(default)]
+    app_metadata: AppMetadata,
+}
+
+/// Admin-controlled custom claims Supabase nests under `app_metadata`. Both
+/// fields are optional on the wire so a token minted before the custom claims
+/// were configured fails CLOSED: a missing `role` is a `MalformedToken`, and a
+/// missing `approved` means not approved.
+#[derive(Debug, Default, Deserialize)]
+struct AppMetadata {
+    #[serde(default)]
+    role: Option<String>,
+    #[serde(default)]
+    approved: bool,
 }
 
 /// Verify a token against the cached JWKS and return the in-token claims — the
@@ -109,13 +126,19 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
         ));
     }
 
-    // 5. Parse the role claim LAST, from the verified token only.
-    let role = Role::from_claim(&claims.role)?;
+    // 5. Parse the role claim LAST, from the VERIFIED token's app_metadata only.
+    //    A token with no app_metadata.role is malformed for our purposes — it
+    //    cannot be mapped to a Syndes role, so it must not grant any access.
+    let role_str = claims.app_metadata.role.as_deref().ok_or_else(|| {
+        AuthError::MalformedToken("token app_metadata is missing the role claim".to_string())
+    })?;
+    let role = Role::from_claim(role_str)?;
 
     Ok(VerifiedClaims {
         sub: claims.sub,
         email: claims.email,
         role,
+        approved: claims.app_metadata.approved,
         exp: claims.exp,
     })
 }

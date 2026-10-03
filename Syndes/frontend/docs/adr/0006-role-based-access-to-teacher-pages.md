@@ -2,7 +2,7 @@
 
 Status: proposed. Needs maintainer review because it touches authorization.
 
-Students may use only the Learn side. Teachers may use Learn and Teach. The app is a static export served by Tauri, so it has no server and no middleware. The only trusted party is the Rust core, which already resolves the role from a verified session (`auth_resolve_role`, SPEC B).
+Approved Students may use only the Learn side. Teachers may use Learn and Teach. The app is a static export served by Tauri, so it has no server and no middleware. The Rust core currently resolves the role from a verified session (`auth_resolve_role`, SPEC B).
 
 ## Decision
 
@@ -30,7 +30,5 @@ Students may use only the Learn side. Teachers may use Learn and Teach. The app 
 
 - **The client checks are for usability, not secrecy.** A static export ships every page's code, including the inline payload with page headings, to every device. Nothing secret may live in the bundle. Real Learner records and anything else teacher-only must come from a teacher-gated Rust command, never from client fixtures.
 - **Nobody can become a Teacher yet.** There is no sign-in flow, so in the desktop app everyone resolves to the Student floor until a session is stored with `auth_online_login`. That needs the Supabase sign-in from Spec A.
-- **New teacher-only commands must call `require_teacher` first.** Student-path commands (`load_module`, `check_answer`, `score_submission`) stay ungated so Learners can study offline.
-- **Open question against ADR-0004 (accepted):** ADR-0004 asks for an online check of current authorization before Teacher actions, and an Administrator who assigns Teacher access. Two things here don't match yet, and both need a maintainer decision:
-  - `require_teacher` currently accepts a Teacher role verified offline from the cached token. Meeting ADR-0004 means requiring the online gate (`AuthSource::OnlineGate` or a fresh login). That in turn needs a configured `SUPABASE_ROLE_RECHECK_URL`.
-  - This ADR also lets an Administrator into Teach pages, following `Role::is_privileged`. The glossary keeps Administrator distinct from Teacher.
+- **New teacher-only commands must call `require_teacher` first.** Student-path commands (`load_module`, `check_answer`, `score_submission`) are currently ungated. Before sign-in ships, they need an approved-Account check that also honors the offline access decision in ADR-0007; Pending Accounts must not be able to use them.
+- **Required alignment with ADR-0004 (accepted):** `require_teacher` currently accepts a role verified offline from the cached token, but entering Teach pages and starting Teacher or Administrator operations require a fresh online check of current authorization. The online recheck endpoint and command guard must be connected before this access model is complete. A Teacher may preserve edits to an already-open local Draft during a connection loss. Administrators are allowed into Teach pages and commands, as confirmed for the MVP.

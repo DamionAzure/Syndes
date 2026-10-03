@@ -1,17 +1,34 @@
 import { useSyncExternalStore } from "react";
-import { createStoredValue } from "@/lib/local-json-storage";
+import { getStoredValue, type StoredValue } from "@/lib/local-json-storage";
+import { accountScopedKey } from "@/lib/account-scope";
+import { getActiveAccountId, subscribeToActiveAccount } from "@/lib/active-account";
 import { DRAFTS_KEY, EMPTY_DRAFTS, parseDraftStore, updateDraft } from "./draft-store";
 import type { DraftStore, ModuleDraft } from "./draft-types";
 
-const draftsValue = createStoredValue(DRAFTS_KEY, parseDraftStore, EMPTY_DRAFTS);
+/**
+ * The Drafts store for the CURRENTLY active Account (ADR 0007: a Teacher's Drafts
+ * belong to their Account and are hidden from every other Account). Stable per
+ * Account via `getStoredValue`.
+ */
+function activeDraftsValue(): StoredValue<DraftStore> {
+  const key = accountScopedKey(DRAFTS_KEY, getActiveAccountId());
+  return getStoredValue(key, parseDraftStore, EMPTY_DRAFTS);
+}
 
-/** Every draft saved on this device. The server snapshot is empty. */
+/** Every draft saved by the active Account on this device. Server snapshot is empty. */
 export function useDraftStore(): DraftStore {
-  return useSyncExternalStore(draftsValue.subscribe, draftsValue.get, draftsValue.getServerSnapshot);
+  const accountId = useSyncExternalStore(
+    subscribeToActiveAccount,
+    getActiveAccountId,
+    () => null,
+  );
+  void accountId;
+  const value = activeDraftsValue();
+  return useSyncExternalStore(value.subscribe, value.get, value.getServerSnapshot);
 }
 
 export function updateDrafts(change: (store: DraftStore) => DraftStore): void {
-  draftsValue.update(change);
+  activeDraftsValue().update(change);
 }
 
 /** Applies one edit to one draft and stamps it as just saved. */

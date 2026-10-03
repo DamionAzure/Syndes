@@ -58,17 +58,18 @@ pub fn store_session_online(
     // Req 2.4: return the in-token role with OnlineVerified provenance.
     Ok(AuthContext {
         role: claims.role,
+        approved: claims.approved,
         read_only: false,
         source: AuthSource::OnlineVerified,
     })
 }
 
 /// Validate the token's claim contract (Req 7.1, 7.2) WITHOUT trusting it: decode
-/// the unverified payload only to confirm `sub`, `email`, `role`
-/// (`student|teacher|admin`), and `exp` are present and well-formed. A token
-/// missing any claim, or carrying an out-of-range `role`, is a `MalformedToken`.
-/// This is a shape gate, not a trust decision — the signature verify is still
-/// what grants access.
+/// the unverified payload only to confirm `sub`, `email`, `exp`, and
+/// `app_metadata.role` (`student|teacher|admin`) are present and well-formed. A
+/// token missing any claim, or carrying an out-of-range `role`, is a
+/// `MalformedToken`. This is a shape gate, not a trust decision — the signature
+/// verify is still what grants access.
 fn validate_token_contract(access_token: &str) -> Result<(), AuthError> {
     use base64::Engine;
 
@@ -84,25 +85,35 @@ fn validate_token_contract(access_token: &str) -> Result<(), AuthError> {
     let value: serde_json::Value = serde_json::from_slice(&bytes)
         .map_err(|e| AuthError::MalformedToken(format!("token payload is not JSON: {e}")))?;
 
-    for claim in ["sub", "email", "role", "exp"] {
+    for claim in ["sub", "email", "exp"] {
         if value.get(claim).is_none() {
             return Err(AuthError::MalformedToken(format!(
                 "token is missing required claim: {claim}"
             )));
         }
     }
-    let role = value
-        .get("role")
-        .and_then(|r| r.as_str())
-        .ok_or_else(|| AuthError::MalformedToken("role claim is not a string".to_string()))?;
-    // Rejects anything outside student|teacher|admin.
-    crate::auth::Role::from_claim(role)?;
 
     if value.get("exp").and_then(|e| e.as_i64()).is_none() {
         return Err(AuthError::MalformedToken(
             "exp claim is not an integer".to_string(),
         ));
     }
+
+    // The app role lives in app_metadata (admin-controlled), NOT the top-level
+    // Supabase `role` claim (the Postgres role). Require it here and bound it to
+    // the three Syndes roles.
+    let role = value
+        .get("app_metadata")
+        .and_then(|m| m.get("role"))
+        .and_then(|r| r.as_str())
+        .ok_or_else(|| {
+            AuthError::MalformedToken(
+                "token is missing required claim: app_metadata.role".to_string(),
+            )
+        })?;
+    // Rejects anything outside student|teacher|admin.
+    crate::auth::Role::from_claim(role)?;
+
     Ok(())
 }
 
@@ -145,7 +156,8 @@ mod tests {
     #[test]
     fn accepts_well_formed_claim_contract() {
         let tok = make_token(&serde_json::json!({
-            "sub": "u1", "email": "t@x.com", "role": "teacher", "exp": 1_900_000_000i64
+            "sub": "u1", "email": "t@x.com", "exp": 1_900_000_000i64,
+            "app_metadata": { "role": "teacher", "approved": true }
         }));
         assert!(validate_token_contract(&tok).is_ok());
     }
@@ -160,9 +172,21 @@ mod tests {
     }
 
     #[test]
+    fn rejects_missing_app_metadata_role() {
+        // The top-level Supabase `role` (Postgres role) must NOT satisfy the
+        // contract: only app_metadata.role counts.
+        let tok = make_token(&serde_json::json!({
+            "sub": "u1", "email": "t@x.com", "role": "authenticated", "exp": 1_900_000_000i64
+        }));
+        let err = validate_token_contract(&tok).unwrap_err();
+        assert!(matches!(err, AuthError::MalformedToken(_)));
+    }
+
+    #[test]
     fn rejects_out_of_range_role() {
         let tok = make_token(&serde_json::json!({
-            "sub": "u1", "email": "t@x.com", "role": "root", "exp": 1_900_000_000i64
+            "sub": "u1", "email": "t@x.com", "exp": 1_900_000_000i64,
+            "app_metadata": { "role": "root" }
         }));
         let err = validate_token_contract(&tok).unwrap_err();
         assert!(matches!(err, AuthError::MalformedToken(_)));

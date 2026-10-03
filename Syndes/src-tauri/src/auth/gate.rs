@@ -20,8 +20,11 @@ const GATE_TIMEOUT: Duration = Duration::from_secs(5);
 /// The result of an online re-check (Req 5.2, 5.4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GateOutcome {
-    /// Online: Supabase re-confirmed the role for a privileged action.
-    Confirmed(Role),
+    /// Online: Supabase re-confirmed the current role AND approval state for the
+    /// Account. Both are read fresh from the live re-check, never from the device
+    /// (ADR 0004: a privileged action needs a fresh online check; ADR 0007:
+    /// revoked approval is enforced on reconnect).
+    Confirmed { role: Role, approved: bool },
     /// Could not reach Supabase, timed out, or the re-check did not confirm —
     /// the caller must drop to Student read-only. Fail closed.
     Unreachable,
@@ -75,29 +78,39 @@ impl OnlineGate for SupabaseGate {
             _ => return GateOutcome::Unreachable,
         };
 
-        // The body is expected to carry the authoritative role string. Any shape
-        // we cannot read as one of the three roles is treated as not-confirmed.
+        // The body is expected to carry the authoritative role + approval. Any
+        // shape we cannot read as one of the three roles is treated as
+        // not-confirmed.
         let body = match resp.text() {
             Ok(b) => b,
             Err(_) => return GateOutcome::Unreachable,
         };
-        parse_recheck_role(&body)
-            .map(GateOutcome::Confirmed)
-            .unwrap_or(GateOutcome::Unreachable)
+        parse_recheck_outcome(&body)
     }
 }
 
-/// Extract the confirmed role from a re-check response body. Pure, no network, so
-/// it is unit-testable. Accepts either a bare role string or a JSON object with a
-/// top-level `role` field. Anything else => `None` (not confirmed).
-fn parse_recheck_role(body: &str) -> Option<Role> {
+/// Extract the confirmed role + approval from a re-check response body. Pure, no
+/// network, so it is unit-testable. Accepts either a bare role string (approval
+/// defaults to false — a bare role carries no approval signal, so fail closed) or
+/// a JSON object with a top-level `role` field and an optional boolean `approved`
+/// field. Anything we cannot read as a valid role => `Unreachable` (not confirmed).
+fn parse_recheck_outcome(body: &str) -> GateOutcome {
     let trimmed = body.trim().trim_matches('"');
     if let Ok(role) = Role::from_claim(trimmed) {
-        return Some(role);
+        // A bare role string carries no approval claim; fail closed on approval.
+        return GateOutcome::Confirmed { role, approved: false };
     }
-    let value: serde_json::Value = serde_json::from_str(body).ok()?;
-    let role_str = value.get("role")?.as_str()?;
-    Role::from_claim(role_str).ok()
+    let value: serde_json::Value = match serde_json::from_str(body) {
+        Ok(v) => v,
+        Err(_) => return GateOutcome::Unreachable,
+    };
+    let role = match value.get("role").and_then(|r| r.as_str()).map(Role::from_claim) {
+        Some(Ok(role)) => role,
+        _ => return GateOutcome::Unreachable,
+    };
+    // Approval is explicit; absent or non-boolean => not approved (fail closed).
+    let approved = value.get("approved").and_then(|a| a.as_bool()).unwrap_or(false);
+    GateOutcome::Confirmed { role, approved }
 }
 
 #[cfg(test)]
@@ -105,23 +118,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_bare_role_string() {
-        assert_eq!(parse_recheck_role("teacher"), Some(Role::Teacher));
-        assert_eq!(parse_recheck_role("\"admin\""), Some(Role::Admin));
+    fn parses_bare_role_string_unapproved() {
+        // A bare role carries no approval signal => approved is false (fail closed).
+        assert_eq!(
+            parse_recheck_outcome("teacher"),
+            GateOutcome::Confirmed { role: Role::Teacher, approved: false }
+        );
+        assert_eq!(
+            parse_recheck_outcome("\"admin\""),
+            GateOutcome::Confirmed { role: Role::Admin, approved: false }
+        );
     }
 
     #[test]
-    fn parses_json_role_field() {
+    fn parses_json_role_and_approval() {
         assert_eq!(
-            parse_recheck_role(r#"{"role":"student","other":1}"#),
-            Some(Role::Student)
+            parse_recheck_outcome(r#"{"role":"student","approved":true,"other":1}"#),
+            GateOutcome::Confirmed { role: Role::Student, approved: true }
+        );
+        // Approved absent => not approved (fail closed).
+        assert_eq!(
+            parse_recheck_outcome(r#"{"role":"teacher"}"#),
+            GateOutcome::Confirmed { role: Role::Teacher, approved: false }
+        );
+        // Approved explicitly false.
+        assert_eq!(
+            parse_recheck_outcome(r#"{"role":"teacher","approved":false}"#),
+            GateOutcome::Confirmed { role: Role::Teacher, approved: false }
         );
     }
 
     #[test]
     fn rejects_unknown_or_garbage() {
-        assert_eq!(parse_recheck_role("superuser"), None);
-        assert_eq!(parse_recheck_role("not json and not a role"), None);
-        assert_eq!(parse_recheck_role(r#"{"role":"root"}"#), None);
+        assert_eq!(parse_recheck_outcome("superuser"), GateOutcome::Unreachable);
+        assert_eq!(parse_recheck_outcome("not json and not a role"), GateOutcome::Unreachable);
+        assert_eq!(parse_recheck_outcome(r#"{"role":"root"}"#), GateOutcome::Unreachable);
     }
 }
