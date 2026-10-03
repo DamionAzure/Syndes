@@ -163,6 +163,40 @@ pub enum AppError {
     // path (missing key, network, bad/invalid response) surfaces as this one typed
     // error so the fallback wiring can decide to serve the pre-generated module.
     GenerationError(String),
+    // --- Local session cache / auth failures (SPEC B) ---------------------
+    // The auth module (session cache + offline role verify) surfaces its typed
+    // AuthError at the command boundary. Each variant mirrors an AuthError
+    // variant 1:1 so the IPC `kind` equals the originating AuthError variant name
+    // (SPEC B Req 8.2). Messages never carry the token, JWKS, or decoded claims.
+    NoCachedSession(String),
+    JwksParseError(String),
+    SignatureInvalid(String),
+    TokenExpired(String),
+    MalformedToken(String),
+    MissingJwks(String),
+    StorageError(String),
+    NetworkError(String),
+}
+
+impl From<crate::auth::AuthError> for AppError {
+    /// Map a typed `AuthError` into the `AppError` shape so commands return a
+    /// single error type across the boundary while the IPC `kind` stays equal to
+    /// the originating `AuthError` variant name (SPEC B Req 8.2). This is a pure
+    /// 1:1 re-tag; it copies the already-non-sensitive message verbatim and adds
+    /// nothing, so the no-secret-logging guarantee (Req 8.4) is preserved.
+    fn from(e: crate::auth::AuthError) -> Self {
+        use crate::auth::AuthError as A;
+        match e {
+            A::NoCachedSession(m) => AppError::NoCachedSession(m),
+            A::JwksParseError(m) => AppError::JwksParseError(m),
+            A::SignatureInvalid(m) => AppError::SignatureInvalid(m),
+            A::TokenExpired(m) => AppError::TokenExpired(m),
+            A::MalformedToken(m) => AppError::MalformedToken(m),
+            A::MissingJwks(m) => AppError::MissingJwks(m),
+            A::StorageError(m) => AppError::StorageError(m),
+            A::NetworkError(m) => AppError::NetworkError(m),
+        }
+    }
 }
 
 impl std::fmt::Display for AppError {
@@ -175,6 +209,14 @@ impl std::fmt::Display for AppError {
             AppError::QuestionNotFound(m) => write!(f, "question not found: {m}"),
             AppError::ValidationError(m) => write!(f, "validation error: {m}"),
             AppError::GenerationError(m) => write!(f, "generation error: {m}"),
+            AppError::NoCachedSession(m) => write!(f, "no cached session: {m}"),
+            AppError::JwksParseError(m) => write!(f, "jwks parse error: {m}"),
+            AppError::SignatureInvalid(m) => write!(f, "signature invalid: {m}"),
+            AppError::TokenExpired(m) => write!(f, "token expired: {m}"),
+            AppError::MalformedToken(m) => write!(f, "malformed token: {m}"),
+            AppError::MissingJwks(m) => write!(f, "missing jwks: {m}"),
+            AppError::StorageError(m) => write!(f, "storage error: {m}"),
+            AppError::NetworkError(m) => write!(f, "network error: {m}"),
         }
     }
 }

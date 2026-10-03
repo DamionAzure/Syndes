@@ -40,6 +40,29 @@ reqwest = { version = "=0.12.28", default-features = false, features = ["json", 
 # Loads GROQ_API_KEY from a local .env at startup for the teacher-side generation
 # path (spec 03). .env is gitignored; absence is fine (student machines have none).
 dotenvy = "0.15"
+# --- Local session cache (SPEC B) -------------------------------------------
+# Offline JWT verification (Layer 2): verifies the Supabase access_token
+# signature against cached JWKS keys and checks `exp`. `jsonwebtoken` carries its
+# own RSA/EC verification; no system OpenSSL. Used only on the auth path.
+jsonwebtoken = "9"
+# Local SQLite store for the cached session (and a durable home for app data).
+# `bundled` compiles SQLite in-tree so there is no system libsqlite3 dependency
+# on student machines.
+rusqlite = { version = "0.32", features = ["bundled"] }
+# base64url decode of the JWT payload for the up-front claim-contract shape check
+# (the trust decision is still the signature verify in `jsonwebtoken`).
+base64 = "0.22"
+
+
+[dev-dependencies]
+# Property-based tests for the SPEC B correctness properties (P1/P4 no-fail-open,
+# P2 strict fallback, P6 removable layer).
+proptest = "1"
+# Mint real RSA-signed JWTs + matching JWKS in the auth integration test so the
+# offline verify path is exercised end-to-end (sign -> cache -> verify) rather
+# than mocked. Test-only; never compiled into the shipped app.
+rsa = { version = "0.9", features = ["std"] }
+rand = "0.8"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

@@ -2,6 +2,11 @@
 // authoritative normalizer, and offline hashing/compare for the Tauri command
 // boundary (spec 01). No network calls anywhere in this crate (spec 04 R5).
 
+// Local session cache + offline role verification (SPEC B). Caches the role
+// Supabase already decided and verifies it offline against cached JWKS keys. It
+// NEVER decides a role, and the loose `role` column is never trusted without a
+// signature verify. Owns the SQLite `cached_session` table.
+mod auth;
 mod commands;
 // Teacher-side, ONLINE-ONLY Groq generation (spec 03). Deliberately NOT imported
 // by loader/scoring/module_store - the student/offline path must never reach it.
@@ -53,6 +58,59 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(ModuleStore::default())
+        // Build the local session cache (SPEC B) in setup, where the app data dir
+        // is resolvable. The DB lives under the OS app-data dir so it persists
+        // across launches; the online-gate re-check URL comes from the Supabase
+        // project env (Spec A seam), falling back to a disabled gate when absent
+        // (which simply makes every verify-failure drop to Student read-only —
+        // fail closed, never open).
+        .setup(|app| {
+            use tauri::Manager;
+
+            let db_path = app
+                .path()
+                .app_data_dir()
+                .map(|dir| {
+                    // Ensure the directory exists before SQLite tries to create
+                    // the file inside it.
+                    let _ = std::fs::create_dir_all(&dir);
+                    dir.join("session_cache.sqlite3")
+                })
+                .map(|p| p.to_string_lossy().to_string())
+                // In the unlikely event the app-data dir cannot be resolved, use
+                // an in-process path so the app still boots; the cache simply
+                // won't persist. Never panic the app over the cache.
+                .unwrap_or_else(|_| "session_cache.sqlite3".to_string());
+
+            // The gate re-check endpoint is Spec A's contract. Read it from the
+            // environment; when unset the gate is "unreachable" by construction,
+            // so offline-style read-only behaviour applies until it is configured.
+            let recheck_url = std::env::var("SUPABASE_ROLE_RECHECK_URL")
+                .unwrap_or_default();
+            let gate: Box<dyn auth::gate::OnlineGate + Send + Sync> =
+                Box::new(auth::gate::SupabaseGate::new(recheck_url));
+
+            match auth::session_store::SessionStore::open(&db_path) {
+                Ok(store) => {
+                    // Confirm the Rust_Core app-data tables (SPEC B Req 1.5/1.6).
+                    // This is advisory at startup: the core still provisions those
+                    // tables elsewhere, so a missing table is logged (naming each
+                    // one) rather than aborting boot. The session cache itself is
+                    // already migrated and usable regardless.
+                    if let Err(e) = store.confirm_app_data_tables() {
+                        eprintln!("auth: app-data tables not yet provisioned ({e})");
+                    }
+                    app.manage(auth::AuthState::new(store, gate));
+                }
+                Err(e) => {
+                    // Surface the setup problem but do not crash: the auth
+                    // commands will be absent/erroring, while the rest of the app
+                    // (offline scoring) still runs.
+                    eprintln!("auth: failed to open session cache ({e}); auth commands disabled");
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::load_module,
             commands::check_answer,
@@ -63,6 +121,9 @@ pub fn run() {
             commands::generate_module,
             commands::list_scaffolds,
             commands::generate_from_scaffold,
+            commands::auth_online_login,
+            commands::auth_resolve_role,
+            commands::auth_logout,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
