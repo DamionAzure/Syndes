@@ -55,7 +55,13 @@ pub fn run() {
     // overrides a variable already set in the real environment.
     let _ = dotenvy::dotenv();
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}));
+    }
+    builder
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .manage(ModuleStore::default())
         // Build the local session cache (SPEC B) in setup, where the app data dir
@@ -66,6 +72,12 @@ pub fn run() {
         // fail closed, never open).
         .setup(|app| {
             use tauri::Manager;
+
+            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                app.deep_link().register_all()?;
+            }
 
             let db_path = app
                 .path()
@@ -85,10 +97,17 @@ pub fn run() {
             // The gate re-check endpoint is Spec A's contract. Read it from the
             // environment; when unset the gate is "unreachable" by construction,
             // so offline-style read-only behaviour applies until it is configured.
-            let recheck_url = std::env::var("SUPABASE_ROLE_RECHECK_URL")
+            let project = auth::project::ProjectConfig::configured().ok();
+            let recheck_url = project
+                .as_ref()
+                .map(|p| p.account_access_url.clone())
+                .unwrap_or_default();
+            let publishable_key = project
+                .as_ref()
+                .map(|p| p.publishable_key.clone())
                 .unwrap_or_default();
             let gate: Box<dyn auth::gate::OnlineGate + Send + Sync> =
-                Box::new(auth::gate::SupabaseGate::new(recheck_url));
+                Box::new(auth::gate::SupabaseGate::new(recheck_url, publishable_key));
 
             match auth::session_store::SessionStore::open(&db_path) {
                 Ok(store) => {
