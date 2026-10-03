@@ -153,7 +153,10 @@ pub fn parse_generation_response(http_json: &str) -> Result<DraftModule, AppErro
         // plaintext answers, spec 03 R2). Keys are schema field names, not secrets.
         let shape = serde_json::from_str::<Value>(content)
             .ok()
-            .and_then(|v| v.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>().join(", ")))
+            .and_then(|v| {
+                v.as_object()
+                    .map(|o| o.keys().cloned().collect::<Vec<_>>().join(", "))
+            })
             .unwrap_or_else(|| "<content was not a JSON object>".to_string());
         AppError::GenerationError(format!(
             "generated content was not a valid draft module: {e} (top-level keys: [{shape}])"
@@ -174,10 +177,14 @@ pub fn validate_draft_shape(draft: &DraftModule) -> Result<(), AppError> {
         )));
     }
     if draft.module.id.trim().is_empty() {
-        return Err(AppError::GenerationError("draft module.id is empty".to_string()));
+        return Err(AppError::GenerationError(
+            "draft module.id is empty".to_string(),
+        ));
     }
     if draft.module.title.trim().is_empty() {
-        return Err(AppError::GenerationError("draft module.title is empty".to_string()));
+        return Err(AppError::GenerationError(
+            "draft module.title is empty".to_string(),
+        ));
     }
 
     let Some(quiz) = &draft.quiz else {
@@ -197,7 +204,9 @@ pub fn validate_draft_shape(draft: &DraftModule) -> Result<(), AppError> {
         )));
     }
     if quiz.questions.is_empty() {
-        return Err(AppError::GenerationError("draft quiz has no questions".to_string()));
+        return Err(AppError::GenerationError(
+            "draft quiz has no questions".to_string(),
+        ));
     }
 
     for q in &quiz.questions {
@@ -441,7 +450,10 @@ mod tests {
         assert!(system.contains(CONTRACT_NORMALIZATION));
         assert!(system.contains(CONTRACT_HASH_ALGO));
         // The user prompt carries the teacher's topic.
-        assert!(messages[1]["content"].as_str().unwrap().contains("Photosynthesis"));
+        assert!(messages[1]["content"]
+            .as_str()
+            .unwrap()
+            .contains("Photosynthesis"));
     }
 
     #[test]

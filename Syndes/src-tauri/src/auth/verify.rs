@@ -47,7 +47,9 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
     if jwks.keys.is_empty() {
         // A syntactically valid but empty set has no key to verify against; treat
         // it as missing rather than a parse failure.
-        return Err(AuthError::MissingJwks("jwks set contains no keys".to_string()));
+        return Err(AuthError::MissingJwks(
+            "jwks set contains no keys".to_string(),
+        ));
     }
 
     // 2. Decode the token header (MalformedToken on failure) and select the key.
@@ -63,10 +65,8 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
     let decoding_key = match &jwk.algorithm {
         AlgorithmParameters::RSA(rsa) => DecodingKey::from_rsa_components(&rsa.n, &rsa.e)
             .map_err(|e| AuthError::JwksParseError(format!("RSA key components invalid: {e}")))?,
-        AlgorithmParameters::EllipticCurve(ec) => {
-            DecodingKey::from_ec_components(&ec.x, &ec.y)
-                .map_err(|e| AuthError::JwksParseError(format!("EC key components invalid: {e}")))?
-        }
+        AlgorithmParameters::EllipticCurve(ec) => DecodingKey::from_ec_components(&ec.x, &ec.y)
+            .map_err(|e| AuthError::JwksParseError(format!("EC key components invalid: {e}")))?,
         other => {
             return Err(AuthError::JwksParseError(format!(
                 "unsupported JWKS key type: {other:?}"
@@ -123,10 +123,7 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
 /// Select the verifying key. When the token carries a `kid` and the set has more
 /// than one key, match by `kid` (Req 3.2). With a single key and no `kid`, use
 /// that key. Returns `None` when nothing matches.
-fn select_key<'a>(
-    jwks: &'a JwkSet,
-    kid: Option<&str>,
-) -> Option<&'a jsonwebtoken::jwk::Jwk> {
+fn select_key<'a>(jwks: &'a JwkSet, kid: Option<&str>) -> Option<&'a jsonwebtoken::jwk::Jwk> {
     match kid {
         Some(kid) => {
             if let Some(k) = jwks.find(kid) {

@@ -4,14 +4,12 @@
 
 use crate::groq::{self, GenerationRequest};
 use crate::loader;
-use crate::model::{
-    AppError, Answer, CheckResult, DraftModule, Module, ScoreResult, SealedAnswer,
-};
+use crate::model::{Answer, AppError, CheckResult, DraftModule, Module, ScoreResult, SealedAnswer};
 use crate::module_store::ModuleStore;
 use crate::normalize::normalize;
 use crate::scaffold::{self, Scaffold, ScaffoldChoice};
-use crate::seal;
 use crate::scoring;
+use crate::seal;
 use tauri::State;
 
 /// Load + parse + validate a module file from a local path. Registers it in the
@@ -152,10 +150,8 @@ pub fn seal_answer(
 /// to the workspace root (one level above this crate's manifest dir). Different
 /// branches keep the fixture under `docs/` vs `Documents/`, so resolve whichever
 /// exists - same set of layouts the e2e test in lib.rs handles.
-const FALLBACK_RELATIVE_CANDIDATES: [&str; 2] = [
-    "docs/example.module.json",
-    "Documents/example.module.json",
-];
+const FALLBACK_RELATIVE_CANDIDATES: [&str; 2] =
+    ["docs/example.module.json", "Documents/example.module.json"];
 
 /// Load the known-good, pre-sealed fallback module (spec 03 R4). Resolves the
 /// fixture across the `docs/`/`Documents/` layouts and runs it through the same
@@ -290,10 +286,8 @@ mod tests {
     #[test]
     fn resolve_err_yields_fallback() {
         let fallback = load_fallback_module().expect("fallback loads");
-        let resolved = resolve_generation(
-            Err(AppError::GenerationError("boom".to_string())),
-            fallback,
-        );
+        let resolved =
+            resolve_generation(Err(AppError::GenerationError("boom".to_string())), fallback);
         assert_eq!(resolved.module.id, "mod_science_photosynthesis_01");
     }
 
@@ -364,7 +358,9 @@ fn require_teacher(state: &AuthState, action: &str) -> Result<AuthContext, AppEr
     if is_teacher_access(&ctx) {
         Ok(ctx)
     } else {
-        Err(AppError::Forbidden(format!("only a signed-in teacher can {action}")))
+        Err(AppError::Forbidden(format!(
+            "only a signed-in teacher can {action}"
+        )))
     }
 }
 
@@ -384,9 +380,21 @@ mod admin_rbac_tests {
 
     #[test]
     fn only_a_verified_admin_is_an_administrator() {
-        let admin = AuthContext { role: Role::Admin, read_only: false, source: AuthSource::OfflineVerified };
-        let teacher = AuthContext { role: Role::Teacher, read_only: false, source: AuthSource::OfflineVerified };
-        let floor = AuthContext { role: Role::Student, read_only: true, source: AuthSource::StudentReadOnly };
+        let admin = AuthContext {
+            role: Role::Admin,
+            read_only: false,
+            source: AuthSource::OfflineVerified,
+        };
+        let teacher = AuthContext {
+            role: Role::Teacher,
+            read_only: false,
+            source: AuthSource::OfflineVerified,
+        };
+        let floor = AuthContext {
+            role: Role::Student,
+            read_only: true,
+            source: AuthSource::StudentReadOnly,
+        };
         assert!(is_admin_access(&admin));
         assert!(!is_admin_access(&teacher));
         assert!(!is_admin_access(&floor));
@@ -399,28 +407,56 @@ mod rbac_tests {
     use crate::auth::AuthSource;
 
     fn ctx(role: Role, read_only: bool, source: AuthSource) -> AuthContext {
-        AuthContext { role, read_only, source }
+        AuthContext {
+            role,
+            read_only,
+            source,
+        }
     }
 
     #[test]
     fn a_verified_teacher_is_allowed() {
-        assert!(is_teacher_access(&ctx(Role::Teacher, false, AuthSource::OfflineVerified)));
-        assert!(is_teacher_access(&ctx(Role::Teacher, false, AuthSource::OnlineGate)));
+        assert!(is_teacher_access(&ctx(
+            Role::Teacher,
+            false,
+            AuthSource::OfflineVerified
+        )));
+        assert!(is_teacher_access(&ctx(
+            Role::Teacher,
+            false,
+            AuthSource::OnlineGate
+        )));
     }
 
     #[test]
     fn an_administrator_is_not_a_teacher() {
-        assert!(!is_teacher_access(&ctx(Role::Admin, false, AuthSource::OfflineVerified)));
+        assert!(!is_teacher_access(&ctx(
+            Role::Admin,
+            false,
+            AuthSource::OfflineVerified
+        )));
     }
 
     #[test]
     fn students_and_the_floor_are_refused() {
-        assert!(!is_teacher_access(&ctx(Role::Student, false, AuthSource::OfflineVerified)));
-        assert!(!is_teacher_access(&ctx(Role::Student, true, AuthSource::StudentReadOnly)));
+        assert!(!is_teacher_access(&ctx(
+            Role::Student,
+            false,
+            AuthSource::OfflineVerified
+        )));
+        assert!(!is_teacher_access(&ctx(
+            Role::Student,
+            true,
+            AuthSource::StudentReadOnly
+        )));
     }
 
     #[test]
     fn a_read_only_teacher_is_refused() {
-        assert!(!is_teacher_access(&ctx(Role::Teacher, true, AuthSource::OnlineGate)));
+        assert!(!is_teacher_access(&ctx(
+            Role::Teacher,
+            true,
+            AuthSource::OnlineGate
+        )));
     }
 }
