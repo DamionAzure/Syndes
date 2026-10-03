@@ -138,9 +138,10 @@
 }
 
 /* Headings and <main> take focus only programmatically, to orient screen
-   readers after a view change; they are not controls, so draw no ring. */
-[tabindex="-1"]:focus,
-[tabindex="-1"]:focus-visible {
+   readers after a view change; they are not controls, so draw no ring.
+   Scoped to these elements so roving-focus controls keep their outline. */
+:is(h1, main)[tabindex="-1"]:focus,
+:is(h1, main)[tabindex="-1"]:focus-visible {
   outline: none;
 }
 

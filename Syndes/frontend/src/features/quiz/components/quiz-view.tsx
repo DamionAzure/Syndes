@@ -12,6 +12,7 @@ import { VersionResetNotice } from "@/features/modules/components/version-reset-
 import type { Module, Quiz } from "@/features/modules/module-types";
 import { routes } from "@/features/modules/routes";
 import { useModuleParam } from "@/features/modules/use-module-param";
+import { placeLabel } from "@/features/progress/place-label";
 import { markQuizSubmitted, recordAnswer, recordStep } from "@/features/progress/progress-store";
 import { nowIso, updateProgress, useModuleProgress } from "@/features/progress/use-progress";
 import { useQuizScorer } from "../quiz-scorer";
@@ -77,7 +78,10 @@ function QuizSession({ found, quiz }: { found: Module; quiz: Quiz }) {
     }
   }
 
-  const place = `Question ${current} of ${total}`;
+  const place = placeLabel(
+    { kind: "quiz", question: current },
+    { lessonCount: found.lessons.length, questionCount: total },
+  );
   const value = answers[question.id] ?? "";
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,14 @@ export function LibraryView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  // The field keeps its own state so fast typing never loses keystrokes to a
+  // lagging URL; Back and Forward bring it back in step with the URL.
   const [query, setQuery] = useState(() => searchParams.get("q") ?? "");
+  useEffect(() => {
+    const onPopState = () => setQuery(new URLSearchParams(window.location.search).get("q") ?? "");
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const subjects = [...new Set(modules.map((summary) => summary.subject))].sort();
   const requestedSubject = searchParams.get("subject") ?? ALL_SUBJECTS;
   const subject = subjects.includes(requestedSubject) ? requestedSubject : ALL_SUBJECTS;
@@ -61,11 +68,6 @@ export function LibraryView() {
 
   return (
     <div className="mx-auto max-w-[72rem]">
-      <h1 className="text-title font-semibold">Modules</h1>
-      <p className="mt-3 max-w-[62ch] text-muted-foreground">
-        Every module stored on this device, plus any your class has listed.
-      </p>
-
       {modules.length === 0 ? (
         <div className="mt-10">
           <EmptyLibrary />

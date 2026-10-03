@@ -9,6 +9,7 @@ import { VersionResetNotice } from "@/features/modules/components/version-reset-
 import type { Module } from "@/features/modules/module-types";
 import { routes } from "@/features/modules/routes";
 import { useModuleParam, usePositionParam } from "@/features/modules/use-module-param";
+import { placeLabel } from "@/features/progress/place-label";
 import { markFinalLessonReached, recordStep } from "@/features/progress/progress-store";
 import { nowIso, updateProgress, useModuleProgress } from "@/features/progress/use-progress";
 import { ChapterRail } from "./chapter-rail";
@@ -31,7 +32,10 @@ function ModuleLessons({ found }: { found: Module }) {
   const { versionReset } = useModuleProgress(found);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const hasQuiz = (found.quiz?.questions.length ?? 0) > 0;
-  const place = `Lesson ${number} of ${total}`;
+  const place = placeLabel(
+    { kind: "lesson", lesson: number },
+    { lessonCount: total, questionCount: found.quiz?.questions.length ?? 0 },
+  );
 
   // An out-of-range lesson falls back to Lesson 1 and the URL follows.
   useEffect(() => {

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import type { ModuleSummary } from "../module-types";
 import { routes } from "../routes";
 import { Availability } from "./availability";
@@ -33,7 +32,7 @@ export function ModuleRow({
         {summary.readyOffline ? (
           <Link
             href={routes.module(summary.id)}
-            className={cn(buttonVariants({ variant: "outline" }))}
+            className={buttonVariants({ variant: "outline" })}
             aria-label={`Open module: ${summary.title}`}
           >
             Open module

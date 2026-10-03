@@ -10,7 +10,7 @@ export function ModuleNotFound() {
       <p className="mt-3 max-w-[62ch] text-muted-foreground">
         This module is not stored here. It may have been removed, or the link may be incomplete.
       </p>
-      <Link href={routes.library()} className={`${buttonVariants({ variant: "outline" })} mt-6`}>
+      <Link href={routes.library()} className={buttonVariants({ variant: "outline", className: "mt-6" })}>
         Back to the library
       </Link>
     </div>

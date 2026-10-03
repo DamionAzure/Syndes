@@ -23,16 +23,7 @@ export function HomeView() {
     : undefined;
 
   return (
-    <div className="mx-auto grid max-w-[56rem] gap-12">
-      <header>
-        <h1 className="text-title font-semibold">Home</h1>
-        <p className="mt-3 text-muted-foreground">
-          {targetSummary
-            ? "Pick up where you left off, or open another module."
-            : "Open a module to start learning. Everything here works without a connection."}
-        </p>
-      </header>
-
+    <div className="mt-12 grid gap-12">
       {target && targetSummary ? (
         <ContinueSection summary={targetSummary} progress={target} />
       ) : null}

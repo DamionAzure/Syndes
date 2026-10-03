@@ -14,11 +14,7 @@ export function SettingsView() {
   }, [preferences]);
 
   return (
-    <div className="mx-auto grid max-w-[44rem] gap-10">
-      <div>
-        <h1 className="text-title font-semibold">Settings</h1>
-        <p className="mt-3 text-muted-foreground">Saved on this device.</p>
-      </div>
+    <div className="mt-10 grid gap-10">
       <ThemeChoice
         value={preferences.theme}
         onChange={(theme) => savePreferences({ ...preferences, theme })}

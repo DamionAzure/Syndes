@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type RefObject } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,7 +15,7 @@ import {
 
 /**
  * Confirms a reset and says what will be removed. After a confirmed reset the
- * trigger is gone, so focus moves to `focusAfterReset`; cancelling returns
+ * trigger is gone, so focus moves to the element `focusAfterResetId`; cancelling returns
  * focus to the trigger.
  */
 export function ResetProgressDialog({
@@ -24,14 +24,14 @@ export function ResetProgressDialog({
   description,
   confirmLabel,
   onConfirm,
-  focusAfterReset,
+  focusAfterResetId,
 }: {
   triggerLabel: string;
   title: string;
   description: string;
   confirmLabel: string;
   onConfirm: () => void;
-  focusAfterReset: RefObject<HTMLElement | null>;
+  focusAfterResetId: string;
 }) {
   const [open, setOpen] = useState(false);
   const confirmed = useRef(false);
@@ -48,7 +48,7 @@ export function ResetProgressDialog({
       <DialogContent
         showCloseButton={false}
         className="gap-6 p-6 sm:max-w-[30rem]"
-        finalFocus={() => (confirmed.current ? focusAfterReset.current : true)}
+        finalFocus={() => (confirmed.current ? document.getElementById(focusAfterResetId) : true)}
       >
         <DialogHeader>
           <DialogTitle className="text-section font-semibold leading-snug">{title}</DialogTitle>
@@ -63,7 +63,7 @@ export function ResetProgressDialog({
               onConfirm();
               setOpen(false);
               // The reset can unmount this dialog before it restores focus.
-              window.setTimeout(() => focusAfterReset.current?.focus(), 0);
+              window.setTimeout(() => document.getElementById(focusAfterResetId)?.focus(), 0);
             }}
           >
             {confirmLabel}

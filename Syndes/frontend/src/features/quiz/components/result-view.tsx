@@ -7,6 +7,7 @@ import { LoadingState } from "@/components/layout/local-data-boundary";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ModuleBreadcrumb } from "@/features/modules/components/module-breadcrumb";
 import { ModuleNotFound } from "@/features/modules/components/module-not-found";
+import { VersionResetNotice } from "@/features/modules/components/version-reset-notice";
 import type { Module, Question, Quiz } from "@/features/modules/module-types";
 import { routes } from "@/features/modules/routes";
 import { useModuleParam } from "@/features/modules/use-module-param";
@@ -31,14 +32,26 @@ export function ResultView() {
 
 function QuizResultGate({ found, quiz }: { found: Module; quiz: Quiz }) {
   const router = useRouter();
-  const { progress } = useModuleProgress(found);
+  const { progress, versionReset } = useModuleProgress(found);
   const submitted = progress?.quizSubmitted === true;
 
-  // A Result exists only for a submitted Quiz.
+  // A Result exists only for a submitted Quiz. After a content update the
+  // notice is shown here instead, since redirecting would lose it.
   useEffect(() => {
-    if (!submitted) router.replace(routes.quiz(found.id));
-  }, [submitted, router, found.id]);
+    if (!submitted && !versionReset) router.replace(routes.quiz(found.id));
+  }, [submitted, versionReset, router, found.id]);
 
+  if (versionReset && !submitted) {
+    return (
+      <div className="mx-auto max-w-[44rem]">
+        <ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Quiz result" />
+        <VersionResetNotice />
+        <Link href={routes.quiz(found.id)} className={buttonVariants()}>
+          Start short quiz
+        </Link>
+      </div>
+    );
+  }
   if (!submitted || !progress) return <LoadingState label="Opening the quiz…" />;
   return <QuizResult found={found} quiz={quiz} answers={progress.answers} />;
 }

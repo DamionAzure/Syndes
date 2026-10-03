@@ -7,7 +7,9 @@ import { ModuleBreadcrumb } from "@/features/modules/components/module-breadcrum
 import { ModuleNotFound } from "@/features/modules/components/module-not-found";
 import type { Flashcard as FlashcardData, Module } from "@/features/modules/module-types";
 import { routes } from "@/features/modules/routes";
+import { VersionResetNotice } from "@/features/modules/components/version-reset-notice";
 import { useModuleParam } from "@/features/modules/use-module-param";
+import { useModuleProgress } from "@/features/progress/use-progress";
 import { Flashcard, type CardSide } from "./flashcard";
 
 export function FlashcardsView() {
@@ -25,7 +27,7 @@ function NoFlashcards({ found }: { found: Module }) {
       <p className="mt-3 text-muted-foreground">
         {found.title} does not include a flashcard deck from your teacher.
       </p>
-      <Link href={routes.module(found.id)} className={`${buttonVariants({ variant: "outline" })} mt-6`}>
+      <Link href={routes.module(found.id)} className={buttonVariants({ variant: "outline", className: "mt-6" })}>
         Back to the module
       </Link>
     </div>
@@ -33,6 +35,8 @@ function NoFlashcards({ found }: { found: Module }) {
 }
 
 function FlashcardDeck({ found, cards }: { found: Module; cards: FlashcardData[] }) {
+  // Viewing any part of an updated Module discards its stale Progress and says so.
+  const { versionReset } = useModuleProgress(found);
   const [index, setIndex] = useState(0);
   const [side, setSide] = useState<CardSide>("front");
   const card = cards[index];
@@ -66,6 +70,7 @@ function FlashcardDeck({ found, cards }: { found: Module; cards: FlashcardData[]
   return (
     <div className="mx-auto max-w-[44rem]">
       <ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Flashcards" />
+      {versionReset ? <VersionResetNotice /> : null}
       <h1 className="text-page font-semibold">Flashcards</h1>
       <p className="mt-2 text-muted-foreground" aria-live="polite">
         Card {index + 1} of {total}
