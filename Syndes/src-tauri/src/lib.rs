@@ -48,9 +48,21 @@ mod e2e {
     use crate::model::{Module, Question};
     use crate::scoring::check;
 
-    // The hand-authored fixture lives at the workspace root under Documents/.
-    // Path is relative to this crate's manifest dir (src-tauri/).
-    const FIXTURE: &str = "../../Documents/example.module.json";
+    // The hand-authored fixture is tracked at the workspace root. Different
+    // branches keep docs under different folder names (`Documents/` on the
+    // backend branch, `docs/` on main after the frontend merge), so resolve
+    // whichever exists instead of hardcoding one and breaking across merges.
+    // Paths are relative to this crate's manifest dir (src-tauri/).
+    fn fixture_path() -> &'static str {
+        const CANDIDATES: [&str; 2] = [
+            "../../Documents/example.module.json",
+            "../../docs/example.module.json",
+        ];
+        CANDIDATES
+            .into_iter()
+            .find(|p| std::path::Path::new(p).exists())
+            .expect("example.module.json fixture not found under Documents/ or docs/")
+    }
 
     fn question<'a>(module: &'a Module, id: &str) -> &'a Question {
         module
@@ -65,14 +77,14 @@ mod e2e {
 
     #[test]
     fn fixture_loads_and_validates() {
-        let module = load_module(FIXTURE).expect("fixture loads + validates");
+        let module = load_module(fixture_path()).expect("fixture loads + validates");
         assert_eq!(module.module.id, "mod_science_photosynthesis_01");
         assert_eq!(module.quiz.as_ref().unwrap().questions.len(), 3);
     }
 
     #[test]
     fn fixture_scores_correct_answers() {
-        let module = load_module(FIXTURE).expect("fixture loads");
+        let module = load_module(fixture_path()).expect("fixture loads");
 
         // Correct answers in different surface forms than sealed, to prove
         // normalization parity (case, whitespace, punctuation).
@@ -88,7 +100,7 @@ mod e2e {
 
     #[test]
     fn fixture_rejects_wrong_answers() {
-        let module = load_module(FIXTURE).expect("fixture loads");
+        let module = load_module(fixture_path()).expect("fixture loads");
         let (c1, p1) = check(question(&module, "q1"), "oxygen").unwrap();
         assert!(!c1 && p1 == 0);
         let (c3, p3) = check(question(&module, "q3"), "False").unwrap();
