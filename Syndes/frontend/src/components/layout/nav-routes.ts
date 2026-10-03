@@ -4,11 +4,15 @@ import {
   ChartColumn,
   FilePenLine,
   GraduationCap,
+  History,
   House,
+  Landmark,
+  LayoutGrid,
   LibraryBig,
   ListChecks,
   School,
   Settings2,
+  UserCog,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -21,16 +25,24 @@ export type NavRoute = {
   sectionPaths?: readonly string[];
 };
 
+export type NavAudience = "teacher" | "admin";
+
 export type NavGroup = {
   label: string;
   routes: readonly NavRoute[];
-  /** "teacher" groups are listed only after the core confirms a Teacher or Admin. */
-  audience?: "teacher";
+  /** Groups with an audience are listed only after the core confirms that role. */
+  audience?: NavAudience;
 };
 
-/** Hides teacher-only groups unless access is confirmed; while checking, it is hidden too. */
-export function visibleGroups(groups: readonly NavGroup[], canTeach: boolean): NavGroup[] {
-  return groups.filter((group) => group.audience !== "teacher" || canTeach);
+export type NavAccess = { canTeach: boolean; canAdminister: boolean };
+
+/** Hides role-only groups unless that role is confirmed; while checking, they stay hidden. */
+export function visibleGroups(groups: readonly NavGroup[], access: NavAccess): NavGroup[] {
+  return groups.filter((group) => {
+    if (group.audience === "teacher") return access.canTeach;
+    if (group.audience === "admin") return access.canAdminister;
+    return true;
+  });
 }
 
 /** Learning first; the device-only pages sit in their own group. */
@@ -59,6 +71,17 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/teach/scores", label: "Scores", icon: ChartColumn },
       { href: "/teach/grades", label: "Grades", icon: GraduationCap },
       { href: "/teach/schedule", label: "Schedule", icon: CalendarDays },
+    ],
+  },
+  {
+    // Wayfinding only; AdminGuard and Supabase's admin-only functions enforce access (ADR-0007).
+    label: "Administration",
+    audience: "admin",
+    routes: [
+      { href: "/admin", label: "School", icon: Landmark },
+      { href: "/admin/people", label: "People and access", icon: UserCog, sectionPaths: ["/admin/person"] },
+      { href: "/admin/sections", label: "Sections", icon: LayoutGrid },
+      { href: "/admin/activity", label: "Activity", icon: History },
     ],
   },
   {

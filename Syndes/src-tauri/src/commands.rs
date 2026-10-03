@@ -312,7 +312,7 @@ mod tests {
 // IPC `kind` equal to the originating variant name — SPEC B Req 8.2). The grace
 // fallback lives in `auth::resolve_access`; these commands only route to it.
 
-use crate::auth::{self, AuthContext, AuthState};
+use crate::auth::{self, AuthContext, AuthState, Role};
 
 /// ONLINE login seam write (Req 2): fetch+cache JWKS, verify, and persist the
 /// session. On any failure nothing is written and a typed error is returned.
@@ -352,9 +352,11 @@ pub fn auth_logout(state: State<'_, AuthState>) -> Result<(), AppError> {
 // before it runs, which also fails closed.
 
 /// The policy, split out so it is testable without Tauri state: a verified
-/// Teacher or Admin who is not read-only.
+/// Teacher who is not read-only. Administrators are deliberately excluded:
+/// they assign Teacher access but do not author or seal content (ADR-0004,
+/// ADR-0007), so roles stay separate rather than nested.
 fn is_teacher_access(ctx: &AuthContext) -> bool {
-    ctx.role.is_privileged() && !ctx.read_only
+    ctx.role == Role::Teacher && !ctx.read_only
 }
 
 fn require_teacher(state: &AuthState, action: &str) -> Result<AuthContext, AppError> {
@@ -366,19 +368,49 @@ fn require_teacher(state: &AuthState, action: &str) -> Result<AuthContext, AppEr
     }
 }
 
+/// Same policy for Administrator-only commands, should any move into the core.
+/// Today Administrator actions run in Supabase behind admin-only functions and
+/// RLS (migration 0004); this keeps one definition ready for the webview's
+/// resolver to agree with.
+#[allow(dead_code)]
+fn is_admin_access(ctx: &AuthContext) -> bool {
+    ctx.role == Role::Admin && !ctx.read_only
+}
+
+#[cfg(test)]
+mod admin_rbac_tests {
+    use super::*;
+    use crate::auth::AuthSource;
+
+    #[test]
+    fn only_a_verified_admin_is_an_administrator() {
+        let admin = AuthContext { role: Role::Admin, read_only: false, source: AuthSource::OfflineVerified };
+        let teacher = AuthContext { role: Role::Teacher, read_only: false, source: AuthSource::OfflineVerified };
+        let floor = AuthContext { role: Role::Student, read_only: true, source: AuthSource::StudentReadOnly };
+        assert!(is_admin_access(&admin));
+        assert!(!is_admin_access(&teacher));
+        assert!(!is_admin_access(&floor));
+    }
+}
+
 #[cfg(test)]
 mod rbac_tests {
     use super::*;
-    use crate::auth::{AuthSource, Role};
+    use crate::auth::AuthSource;
 
     fn ctx(role: Role, read_only: bool, source: AuthSource) -> AuthContext {
         AuthContext { role, read_only, source }
     }
 
     #[test]
-    fn verified_teacher_and_admin_are_allowed() {
+    fn a_verified_teacher_is_allowed() {
         assert!(is_teacher_access(&ctx(Role::Teacher, false, AuthSource::OfflineVerified)));
-        assert!(is_teacher_access(&ctx(Role::Admin, false, AuthSource::OnlineGate)));
+        assert!(is_teacher_access(&ctx(Role::Teacher, false, AuthSource::OnlineGate)));
+    }
+
+    #[test]
+    fn an_administrator_is_not_a_teacher() {
+        assert!(!is_teacher_access(&ctx(Role::Admin, false, AuthSource::OfflineVerified)));
     }
 
     #[test]

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { canTeach, STUDENT_FLOOR, type AuthContext } from "@/lib/access/access";
+import { canAdminister, canTeach, STUDENT_FLOOR, type AuthContext } from "@/lib/access/access";
 import { resolveAccess } from "@/lib/access/access-bridge";
 
 export type AccessState = {
@@ -9,9 +9,15 @@ export type AccessState = {
   status: "checking" | "ready";
   context: AuthContext;
   canTeach: boolean;
+  canAdminister: boolean;
 };
 
-const CHECKING: AccessState = { status: "checking", context: STUDENT_FLOOR, canTeach: false };
+const CHECKING: AccessState = {
+  status: "checking",
+  context: STUDENT_FLOOR,
+  canTeach: false,
+  canAdminister: false,
+};
 
 const AccessContext = createContext<AccessState>(CHECKING);
 
@@ -22,7 +28,9 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
     void resolveAccess(false).then((context) => {
-      if (active) setState({ status: "ready", context, canTeach: canTeach(context) });
+      if (active) {
+        setState({ status: "ready", context, canTeach: canTeach(context), canAdminister: canAdminister(context) });
+      }
     });
     return () => {
       active = false;

@@ -27,17 +27,34 @@ export function parseAuthContext(raw: unknown): AuthContext {
   return { role, readOnly, source };
 }
 
-/** Teach is for a verified Teacher or Admin who is not in the read-only floor. */
+/**
+ * Roles are separate, not nested (ADR-0007): Teach is for a verified Teacher,
+ * Administration for a verified Administrator. Everyone may use Learn.
+ */
 export function canTeach(context: AuthContext): boolean {
-  return (context.role === "teacher" || context.role === "admin") && !context.readOnly;
+  return context.role === "teacher" && !context.readOnly;
+}
+
+export function canAdminister(context: AuthContext): boolean {
+  return context.role === "admin" && !context.readOnly;
 }
 
 export const TEACH_PATH = "/teach";
 
+export const ADMIN_PATH = "/admin";
+
 /** Where a Student lands when they try to open a Teacher page. */
 export const LEARN_HOME = "/";
 
-export function isTeachPath(pathname: string): boolean {
+function isWithin(pathname: string, base: string): boolean {
   const path = pathname.length > 1 ? pathname.replace(/\/$/, "") : pathname;
-  return path === TEACH_PATH || path.startsWith(`${TEACH_PATH}/`);
+  return path === base || path.startsWith(`${base}/`);
+}
+
+export function isTeachPath(pathname: string): boolean {
+  return isWithin(pathname, TEACH_PATH);
+}
+
+export function isAdminPath(pathname: string): boolean {
+  return isWithin(pathname, ADMIN_PATH);
 }

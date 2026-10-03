@@ -19,9 +19,9 @@ Students may use only the Learn side. Teachers may use Learn and Teach. The app 
 - The prerendered HTML for every `/teach` route shows only the checking state.
 - The Teach nav group is listed only after the core confirms a Teacher. While the check is running, it stays hidden.
 
-**Admin counts as a Teacher**, matching `Role::is_privileged` in the core.
+**Superseded by ADR-0007:** an Administrator no longer counts as a Teacher. Teach and the teacher commands require `Role::Teacher`; Administrators get their own Administration section.
 
-**For development only:** in plain `next dev` there is no Rust core. Setting `NEXT_PUBLIC_SYNDES_DEV_ROLE=teacher` (or `admin`) stands in for a verified Teacher.
+**For development only:** in plain `next dev` there is no Rust core. Setting `NEXT_PUBLIC_SYNDES_DEV_ROLE=teacher` (or `admin`) stands in for a verified Teacher (or Administrator).
 - It is read only when `NODE_ENV` is `development` and the page is outside Tauri.
 - `next build` sets `NODE_ENV` to production, so shipped builds ignore it.
 - Example: `$env:NEXT_PUBLIC_SYNDES_DEV_ROLE="teacher"; npm run dev`.
@@ -33,4 +33,5 @@ Students may use only the Learn side. Teachers may use Learn and Teach. The app 
 - **New teacher-only commands must call `require_teacher` first.** Student-path commands (`load_module`, `check_answer`, `score_submission`) stay ungated so Learners can study offline.
 - **Open question against ADR-0004 (accepted):** ADR-0004 asks for an online check of current authorization before Teacher actions, and an Administrator who assigns Teacher access. Two things here don't match yet, and both need a maintainer decision:
   - `require_teacher` currently accepts a Teacher role verified offline from the cached token. Meeting ADR-0004 means requiring the online gate (`AuthSource::OnlineGate` or a fresh login). That in turn needs a configured `SUPABASE_ROLE_RECHECK_URL`.
-  - This ADR also lets an Administrator into Teach pages, following `Role::is_privileged`. The glossary keeps Administrator distinct from Teacher.
+  - ~~This ADR also lets an Administrator into Teach pages.~~ Resolved by ADR-0007: roles are separate.
+  - Administrator actions already meet ADR-0004: they run in Supabase functions that read the caller's current role (ADR-0007).

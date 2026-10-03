@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NAV_GROUPS, visibleGroups } from "@/components/layout/nav-routes";
-import { canTeach, isTeachPath, parseAuthContext, STUDENT_FLOOR } from "./access";
+import { canAdminister, canTeach, isAdminPath, isTeachPath, parseAuthContext, STUDENT_FLOOR } from "./access";
 
 describe("parseAuthContext", () => {
   it("reads the core's AuthContext", () => {
@@ -23,32 +23,46 @@ describe("parseAuthContext", () => {
   });
 });
 
-describe("canTeach", () => {
-  it("allows a verified Teacher or Admin", () => {
-    expect(canTeach({ role: "teacher", readOnly: false, source: "offlineVerified" })).toBe(true);
-    expect(canTeach({ role: "admin", readOnly: false, source: "onlineGate" })).toBe(true);
+describe("roles are separate", () => {
+  const teacher = { role: "teacher", readOnly: false, source: "offlineVerified" } as const;
+  const admin = { role: "admin", readOnly: false, source: "onlineGate" } as const;
+  const student = { role: "student", readOnly: false, source: "offlineVerified" } as const;
+
+  it("lets only a verified Teacher teach", () => {
+    expect(canTeach(teacher)).toBe(true);
+    expect(canTeach(admin)).toBe(false);
+    expect(canTeach(student)).toBe(false);
+    expect(canTeach({ ...teacher, readOnly: true })).toBe(false);
   });
 
-  it("refuses Students, the floor, and a read-only Teacher", () => {
-    expect(canTeach({ role: "student", readOnly: false, source: "offlineVerified" })).toBe(false);
-    expect(canTeach(STUDENT_FLOOR)).toBe(false);
-    expect(canTeach({ role: "teacher", readOnly: true, source: "onlineGate" })).toBe(false);
+  it("lets only a verified Administrator administer", () => {
+    expect(canAdminister(admin)).toBe(true);
+    expect(canAdminister(teacher)).toBe(false);
+    expect(canAdminister(STUDENT_FLOOR)).toBe(false);
+    expect(canAdminister({ ...admin, readOnly: true })).toBe(false);
   });
 });
 
-describe("isTeachPath", () => {
-  it("matches the Teach section and nothing that only starts the same way", () => {
+describe("section paths", () => {
+  it("match their section and nothing that only starts the same way", () => {
     expect(isTeachPath("/teach")).toBe(true);
-    expect(isTeachPath("/teach/")).toBe(true);
     expect(isTeachPath("/teach/grades")).toBe(true);
     expect(isTeachPath("/teacher")).toBe(false);
-    expect(isTeachPath("/modules")).toBe(false);
+    expect(isAdminPath("/admin/")).toBe(true);
+    expect(isAdminPath("/admin/people")).toBe(true);
+    expect(isAdminPath("/administrator")).toBe(false);
   });
 });
 
 describe("navigation", () => {
-  it("lists the Teach group only for teachers", () => {
-    expect(visibleGroups(NAV_GROUPS, false).map((group) => group.label)).toEqual(["Learn", "On this device"]);
-    expect(visibleGroups(NAV_GROUPS, true).map((group) => group.label)).toEqual(["Learn", "Teach", "On this device"]);
+  const labels = (canTeachValue: boolean, canAdministerValue: boolean) =>
+    visibleGroups(NAV_GROUPS, { canTeach: canTeachValue, canAdminister: canAdministerValue }).map(
+      (group) => group.label,
+    );
+
+  it("shows each role only its own groups", () => {
+    expect(labels(false, false)).toEqual(["Learn", "On this device"]);
+    expect(labels(true, false)).toEqual(["Learn", "Teach", "On this device"]);
+    expect(labels(false, true)).toEqual(["Learn", "Administration", "On this device"]);
   });
 });

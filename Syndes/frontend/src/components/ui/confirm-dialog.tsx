@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/dialog";
 
 /**
- * Confirms a removal and says exactly what goes. Cancelling returns focus to
- * the trigger; after confirming, the trigger is usually gone, so focus moves
- * to `focusAfterId`.
+ * Confirms a change and says exactly what it does. Cancelling returns focus
+ * to the trigger; after confirming, the trigger is often gone, so focus moves
+ * to `focusAfterId`. `tone` is "destructive" for removals, "default" for
+ * grants that still deserve a second look.
  */
 export function ConfirmDialog({
   trigger,
@@ -26,6 +27,9 @@ export function ConfirmDialog({
   confirmLabel,
   onConfirm,
   focusAfterId,
+  tone = "destructive",
+  children,
+  confirmDisabled = false,
 }: {
   trigger: ReactElement;
   triggerLabel: ReactNode;
@@ -34,6 +38,10 @@ export function ConfirmDialog({
   confirmLabel: string;
   onConfirm: () => void;
   focusAfterId: string;
+  tone?: "destructive" | "default";
+  /** Extra choices the confirmation needs, such as a reason. */
+  children?: ReactNode;
+  confirmDisabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const confirmed = useRef(false);
@@ -56,10 +64,12 @@ export function ConfirmDialog({
           <DialogTitle className="text-section leading-snug font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-body text-muted-foreground">{description}</DialogDescription>
         </DialogHeader>
+        {children}
         <DialogFooter className="-mx-6 -mb-6 bg-surface-muted p-6">
           <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
           <Button
-            variant="destructive"
+            variant={tone}
+            disabled={confirmDisabled}
             onClick={() => {
               confirmed.current = true;
               onConfirm();

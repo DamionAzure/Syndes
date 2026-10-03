@@ -16,6 +16,13 @@ existing `load_module` Tauri command.
 - `migrations/0003_rls_policies.sql` — Row-Level Security: anon reads only
   `published` rows and cannot write; authenticated teachers write only their own
   rows (`owner = auth.uid()`).
+- `migrations/0004_school_access.sql` — the school directory and
+  Administrator-assigned access (ADR-0004, ADR-0007): `profiles` with
+  `app_role` (every sign-in starts as `student`), sections, classes, teacher
+  assignments, enrollments, period results, statistics snapshots and an
+  append-only `access_events` log. Clients get read-only RLS; every access
+  change goes through an `admin_*` SECURITY DEFINER function that re-checks the
+  caller's current role. Not yet executed; it has no SQL tests yet.
 - `tests/0001_sealed_shape_and_rls.test.sql` — DB tests: acceptance + metadata
   derivation, one-invariant-per-fixture rejections, and RLS-enabled smoke checks.
 

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { checkDraft } from "../draft-checks";
 import {
   createDraft,
@@ -19,7 +20,6 @@ import {
 import type { DraftStart } from "../draft-types";
 import { authoringRoutes } from "../routes";
 import { updateDrafts, useDraftStore } from "../use-drafts";
-import { ConfirmDialog } from "./confirm-dialog";
 
 const STARTS: { start: DraftStart; label: string; description: string; icon: LucideIcon }[] = [
   {

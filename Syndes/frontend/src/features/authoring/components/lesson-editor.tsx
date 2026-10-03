@@ -2,13 +2,13 @@
 
 import { Heading, Pilcrow } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fieldIds } from "../draft-checks";
 import { move, newBlock, removeAt, replaceAt } from "../draft-store";
 import type { DraftBlock, DraftLesson, ModuleDraft } from "../draft-types";
-import { ConfirmDialog } from "./confirm-dialog";
 import { ItemControls, wholeNumber, type EditDraft } from "./item-controls";
 
 const BLOCK_LABEL: Record<DraftBlock["kind"], string> = { heading: "Heading", paragraph: "Paragraph" };
