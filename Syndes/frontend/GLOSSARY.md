@@ -63,3 +63,33 @@ _Avoid_: Finished, done, passed
 **Ready offline**:
 The state of a Module whose complete content is stored on this device.
 _Avoid_: Downloaded, cached, synced
+
+## Teacher side
+
+**Draft**:
+A Teacher's unsealed Module, saved on the Teacher's device. It holds correct answers in the clear and never reaches a Learner.
+_Avoid_: Unpublished module, work in progress
+
+**Seal**:
+Turning a Draft into the Module file Learners open, with each correct answer replaced by a check the device can run. The word stays in Teacher screens only.
+_Avoid_: Publish, compile, encrypt
+
+**Section**:
+A group of Learners taught together, such as Grade 6 Sampaguita.
+_Avoid_: Class (for the group itself), batch
+
+**Class**:
+One Section taught one learning area by the Teacher, such as Science for Grade 6 Sampaguita.
+_Avoid_: Course, subject (for the pairing)
+
+**Score**:
+A Learner's raw total in one grading component for a quarter: written work, performance tasks, or the quarterly assessment.
+_Avoid_: Mark, points (for the total)
+
+**Grade**:
+The quarterly grade a Teacher records for a Learner in a Class, computed from weighted Scores and transmuted under DepEd Order No. 8, s. 2015. A Grade is not a Result; Results come from Module Quizzes.
+_Avoid_: Mark, rating
+
+**Schedule**:
+The Teacher's recurring weekly periods: classes, advisory, and consultation hours.
+_Avoid_: Timetable, calendar

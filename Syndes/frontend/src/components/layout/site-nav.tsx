@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAccess } from "@/components/access/access-provider";
 import { cn } from "@/lib/utils";
-import { ariaCurrentFor, NAV_GROUPS } from "./nav-routes";
+import { ariaCurrentFor, NAV_GROUPS, visibleGroups } from "./nav-routes";
 
 /**
  * Grouped, labelled routes. The current section gets a filled row, a primary
@@ -11,10 +12,11 @@ import { ariaCurrentFor, NAV_GROUPS } from "./nav-routes";
  */
 export function SiteNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { canTeach } = useAccess();
 
   return (
     <nav aria-label="Main" className="grid gap-6">
-      {NAV_GROUPS.map((group) => (
+      {visibleGroups(NAV_GROUPS, canTeach).map((group) => (
         <div key={group.label}>
           <h2 className="px-3 pb-2 text-meta text-muted-foreground">{group.label}</h2>
           <ul className="grid gap-1">

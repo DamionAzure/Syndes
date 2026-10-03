@@ -176,6 +176,10 @@ pub enum AppError {
     MissingJwks(String),
     StorageError(String),
     NetworkError(String),
+    // --- Authorization (RBAC) ---------------------------------------------
+    // A teacher-only command was called without a verified Teacher/Admin role.
+    // The message names the action, never the token or claims.
+    Forbidden(String),
 }
 
 impl From<crate::auth::AuthError> for AppError {
@@ -217,6 +221,7 @@ impl std::fmt::Display for AppError {
             AppError::MissingJwks(m) => write!(f, "missing jwks: {m}"),
             AppError::StorageError(m) => write!(f, "storage error: {m}"),
             AppError::NetworkError(m) => write!(f, "network error: {m}"),
+            AppError::Forbidden(m) => write!(f, "forbidden: {m}"),
         }
     }
 }

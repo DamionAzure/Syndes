@@ -1,4 +1,17 @@
-import { Bookmark, House, LibraryBig, ListChecks, Settings2, type LucideIcon } from "lucide-react";
+import {
+  Bookmark,
+  CalendarDays,
+  ChartColumn,
+  FilePenLine,
+  GraduationCap,
+  House,
+  LibraryBig,
+  ListChecks,
+  School,
+  Settings2,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 export type NavRoute = {
   href: string;
@@ -8,7 +21,17 @@ export type NavRoute = {
   sectionPaths?: readonly string[];
 };
 
-export type NavGroup = { label: string; routes: readonly NavRoute[] };
+export type NavGroup = {
+  label: string;
+  routes: readonly NavRoute[];
+  /** "teacher" groups are listed only after the core confirms a Teacher or Admin. */
+  audience?: "teacher";
+};
+
+/** Hides teacher-only groups unless access is confirmed; while checking, it is hidden too. */
+export function visibleGroups(groups: readonly NavGroup[], canTeach: boolean): NavGroup[] {
+  return groups.filter((group) => group.audience !== "teacher" || canTeach);
+}
 
 /** Learning first; the device-only pages sit in their own group. */
 export const NAV_GROUPS: readonly NavGroup[] = [
@@ -23,6 +46,19 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         sectionPaths: ["/module", "/lesson", "/flashcards"],
       },
       { href: "/quizzes", label: "Quizzes", icon: ListChecks, sectionPaths: ["/quiz", "/quiz/result"] },
+    ],
+  },
+  {
+    // Hiding the group is wayfinding only; TeachGuard and the Rust core enforce access (ADR-0005).
+    label: "Teach",
+    audience: "teacher",
+    routes: [
+      { href: "/teach", label: "Teaching", icon: School },
+      { href: "/teach/drafts", label: "Editor", icon: FilePenLine, sectionPaths: ["/teach/editor"] },
+      { href: "/teach/learners", label: "Learners", icon: Users, sectionPaths: ["/teach/learner"] },
+      { href: "/teach/scores", label: "Scores", icon: ChartColumn },
+      { href: "/teach/grades", label: "Grades", icon: GraduationCap },
+      { href: "/teach/schedule", label: "Schedule", icon: CalendarDays },
     ],
   },
   {
