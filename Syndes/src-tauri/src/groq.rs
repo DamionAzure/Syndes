@@ -250,6 +250,15 @@ pub fn validate_draft_shape(draft: &DraftModule) -> Result<(), AppError> {
     Ok(())
 }
 
+/// Validate the API key read from the environment: present and non-blank, or a
+/// typed GenerationError (never a panic - spec 03/04 fail-safe). Split out as a
+/// pure function so the missing/empty-key contract point is unit-tested without
+/// mutating process-global env vars (review finding #4).
+fn require_api_key(raw: Option<String>) -> Result<String, AppError> {
+    raw.filter(|k| !k.trim().is_empty())
+        .ok_or_else(|| AppError::GenerationError("GROQ_API_KEY not set".to_string()))
+}
+
 /// The ONLY network-touching function: POST the body to Groq and return the raw
 /// response body string. Uses the blocking client so the command stays sync.
 /// Maps network errors and non-2xx responses to GenerationError. NEVER includes
@@ -287,10 +296,7 @@ fn call_groq(api_key: &str, body: &Value) -> Result<String, AppError> {
 /// answers) for the caller to immediately seal. ONLINE-ONLY, teacher-side.
 pub fn generate_draft(req: GenerationRequest) -> Result<DraftModule, AppError> {
     // Key comes from the environment ONLY - never hardcoded, never committed.
-    let api_key = std::env::var("GROQ_API_KEY")
-        .ok()
-        .filter(|k| !k.trim().is_empty())
-        .ok_or_else(|| AppError::GenerationError("GROQ_API_KEY not set".to_string()))?;
+    let api_key = require_api_key(std::env::var("GROQ_API_KEY").ok())?;
 
     let body = build_request_body(&req);
     let raw = call_groq(&api_key, &body)?;
@@ -421,6 +427,32 @@ mod tests {
     fn validate_accepts_a_good_draft() {
         let draft = parse_generation_response(&sample_groq_response()).unwrap();
         assert!(validate_draft_shape(&draft).is_ok());
+    }
+
+    #[test]
+    fn require_api_key_rejects_missing_empty_and_blank() {
+        // Missing, empty, and whitespace-only keys all yield GenerationError and
+        // never panic - the fail-safe contract for the key read (review finding #4).
+        assert!(matches!(
+            require_api_key(None),
+            Err(AppError::GenerationError(_))
+        ));
+        assert!(matches!(
+            require_api_key(Some(String::new())),
+            Err(AppError::GenerationError(_))
+        ));
+        assert!(matches!(
+            require_api_key(Some("   ".to_string())),
+            Err(AppError::GenerationError(_))
+        ));
+    }
+
+    #[test]
+    fn require_api_key_accepts_a_real_key() {
+        assert_eq!(
+            require_api_key(Some("gsk_example".to_string())).unwrap(),
+            "gsk_example"
+        );
     }
 
     #[test]

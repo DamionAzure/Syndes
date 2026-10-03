@@ -141,28 +141,41 @@ pub fn seal_answer(question_id: String, plaintext_answer: String) -> Result<Seal
 // draft) it serves the known-good, pre-sealed fallback module instead. The live
 // call is a bonus, never a dependency.
 
-/// Candidate paths for the pre-generated fallback fixture, relative to this
-/// crate's manifest dir (src-tauri/). Different branches keep the fixture under
-/// `docs/` vs `Documents/`, so resolve whichever exists - same approach as the
-/// e2e test in lib.rs.
-const FALLBACK_CANDIDATES: [&str; 2] = [
-    "../../docs/example.module.json",
-    "../../Documents/example.module.json",
+/// Candidate locations for the pre-generated fallback fixture, as paths relative
+/// to the workspace root (one level above this crate's manifest dir). Different
+/// branches keep the fixture under `docs/` vs `Documents/`, so resolve whichever
+/// exists - same set of layouts the e2e test in lib.rs handles.
+const FALLBACK_RELATIVE_CANDIDATES: [&str; 2] = [
+    "docs/example.module.json",
+    "Documents/example.module.json",
 ];
 
 /// Load the known-good, pre-sealed fallback module (spec 03 R4). Resolves the
 /// fixture across the `docs/`/`Documents/` layouts and runs it through the same
 /// loader validation the student path uses, so the fallback is guaranteed valid.
+///
+/// Paths are anchored to CARGO_MANIFEST_DIR (the crate dir, baked in at compile
+/// time) rather than the process CWD, so the fallback guarantee holds regardless
+/// of where the app is launched from - not only when CWD happens to be src-tauri/
+/// (review finding #2). The fixture lives at the OUTER workspace root, two levels
+/// above the manifest dir: src-tauri -> Syndes(project) -> Syndes(workspace root).
 fn load_fallback_module() -> Result<Module, AppError> {
-    let path = FALLBACK_CANDIDATES
-        .into_iter()
-        .find(|p| std::path::Path::new(p).exists())
+    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+    // `..` twice to reach the workspace root; join normalizes without needing the
+    // path to be canonicalized. If the ancestors are somehow missing we still fall
+    // through to the not-found error below rather than panicking.
+    let workspace_root = manifest_dir.join("..").join("..");
+
+    let path = FALLBACK_RELATIVE_CANDIDATES
+        .iter()
+        .map(|rel| workspace_root.join(rel))
+        .find(|p| p.exists())
         .ok_or_else(|| {
             AppError::ModuleNotFound(
                 "fallback example.module.json not found under docs/ or Documents/".to_string(),
             )
         })?;
-    loader::load_module(path)
+    loader::load_module(&path.to_string_lossy())
 }
 
 /// Pure fallback decision (spec 03 R4), split out so it is testable without a

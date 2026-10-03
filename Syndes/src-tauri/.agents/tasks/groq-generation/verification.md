@@ -51,3 +51,20 @@ Expected: all existing suites (scoring, normalize, loader, seal, salt, e2e) plus
 ## Cleanup
 
 Temporary files created during investigation were removed. No draft/plaintext data was written to disk at any point.
+
+---
+
+## UPDATE — runtime verification completed + review findings addressed
+
+A Rust toolchain was available on the integrating machine, so the blocked steps were run and the semantic review's findings (`review.md`, verdict APPROVED, all non-blocking) were acted on.
+
+- **Finding #1 (unverified at runtime) — RESOLVED.** `cargo build` succeeds, including the first-time fetch + compile of `reqwest 0.12.28` and its rustls transitive deps. `cargo test` passes (35 tests: scoring, normalize, loader, seal, salt, e2e, groq, commands). `cargo clippy --all-targets` is clean. Static safety checks re-confirmed independently: no hardcoded key (only `std::env::var`), and zero `groq` references in `loader.rs`/`scoring.rs`/`module_store.rs` (student-path isolation holds).
+- **Finding #2 (CWD-relative fallback) — FIXED.** `load_fallback_module` now anchors the fixture lookup to `CARGO_MANIFEST_DIR` (`../..` to the outer workspace root) instead of CWD-relative paths, so the fallback guarantee holds no matter where the app is launched from, not just when CWD is `src-tauri/`.
+- **Finding #3 (fixture-missing returns Err) — LEFT AS DESIGNED.** Deliberate "if even the fallback is missing, that's a real setup error" stance; reasonable and unchanged.
+- **Finding #4 (env-key branch untested) — FIXED.** Extracted the key check into a pure `require_api_key(Option<String>)` and added tests for missing/empty/blank (→ `GenerationError`, no panic) and a valid key, without mutating process-global env vars.
+
+### Additional gap found and closed (not in the original review)
+
+The branch read `GROQ_API_KEY` from the environment but nothing loaded `.env`, so the key never reached `generate_draft` and `generate_module` would always fall back. Added `dotenvy` and a `dotenvy::dotenv()` call at startup in `run()` (absence is non-fatal; the offline path is untouched). Confirmed the key loads via a presence-only check (value never printed). `.env` is gitignored (`.env`, `.env.*`) with a committed `.env.example`; the real key has never been tracked or committed.
+
+Not done here: no LIVE Groq API call was made (it would spend credits and hit an external service). The live smoke test — launch the app with a valid key in `.env` and trigger `generate_module` — remains for the team to run.
