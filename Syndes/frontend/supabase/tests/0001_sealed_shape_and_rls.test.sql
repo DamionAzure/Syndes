@@ -5,7 +5,7 @@
 -- RAISE on unexpected outcomes, so a clean run == all tests passed.
 --
 -- These guard the SECURITY backbone: the sealed-shape trigger (migration 0002)
--- and the RLS policies (migration 0003). No frontend required.
+-- and the current Account RLS policies. No frontend required.
 
 -- ---------------------------------------------------------------------------
 -- Helpers: a known-good sealed module, and a runner that asserts a given write
@@ -151,39 +151,18 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- ADR 0004/0007 — approval claim helper `is_approved()` reads app_metadata.
---   Simulate the request JWT via the `request.jwt.claims` GUC (what auth.jwt()
---   reads) and assert the helper fails CLOSED when the claim is absent/false and
---   true only when app_metadata.approved is explicitly true.
+-- ADR 0004/0007 — current Account state is server-controlled. Claim snapshots
+-- are deliberately not authority. The role/approval matrix is exercised in
+-- 0002_account_authority.test.sql.
 -- ---------------------------------------------------------------------------
 do $$
 begin
-  -- No JWT at all => not approved (fail closed).
-  perform set_config('request.jwt.claims', NULL, true);
-  if public.is_approved() then
-    raise exception 'TEST FAILED: is_approved() true with no JWT';
+  if not exists (
+    select 1 from pg_class
+    where oid = 'app_private.account_access'::regclass and relrowsecurity
+  ) then
+    raise exception 'TEST FAILED: Account authority table lacks RLS';
   end if;
-
-  -- JWT present but no approval claim => not approved.
-  perform set_config('request.jwt.claims', '{"app_metadata":{}}', true);
-  if public.is_approved() then
-    raise exception 'TEST FAILED: is_approved() true with no approved claim';
-  end if;
-
-  -- Explicitly false => not approved.
-  perform set_config('request.jwt.claims', '{"app_metadata":{"approved":false}}', true);
-  if public.is_approved() then
-    raise exception 'TEST FAILED: is_approved() true when approved=false';
-  end if;
-
-  -- Explicitly true => approved.
-  perform set_config('request.jwt.claims', '{"app_metadata":{"approved":true}}', true);
-  if not public.is_approved() then
-    raise exception 'TEST FAILED: is_approved() false when approved=true';
-  end if;
-
-  -- Clean up the simulated claims.
-  perform set_config('request.jwt.claims', NULL, true);
-  raise notice 'ok: is_approved() reads app_metadata.approved and fails closed';
+  raise notice 'ok: Account authority table has RLS';
 end;
 $$;

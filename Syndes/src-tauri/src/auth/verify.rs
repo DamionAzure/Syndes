@@ -1,15 +1,13 @@
 // auth::verify — Layer 2, the TRUSTED layer (SPEC B Req 3). Offline JWT
-// verification: given the stored token and cached JWKS, verify the signature and
-// `exp`, then return the role claim read ONLY from inside the verified token.
+// verification: given the stored token and cached JWKS, verify signature,
+// project issuer and audience. The caller chooses whether expiry is required.
 //
 // This layer is REMOVABLE: delete it and the online gate (Layer 1) still stands.
 // It is also the only place a `role` becomes trusted offline. It performs NO
 // SQLite reads and has NO side effects — it is a pure function of (token, jwks).
 //
-// Clock-skew caution: offline, the device clock is the only `exp` truth and may
-// drift. We allow a small `CLOCK_SKEW_TOLERANCE_SECS` grace, then treat the token
-// as expired (fail CLOSED). Spec A sets a generous (days) token lifetime so this
-// is a margin, not a crutch.
+// Expiry is mandatory at login and for online Teacher operations. Offline study
+// can outlive JWT expiry only with a prior live Account approval receipt.
 
 use crate::auth::{AuthError, Role, VerifiedClaims, CLOCK_SKEW_TOLERANCE_SECS};
 use jsonwebtoken::jwk::{AlgorithmParameters, JwkSet};
@@ -29,20 +27,21 @@ struct RawClaims {
     sub: String,
     email: String,
     exp: i64,
+    #[serde(rename = "iss")]
+    _iss: String,
+    #[serde(rename = "aud")]
+    _aud: String,
     #[serde(default)]
     app_metadata: AppMetadata,
 }
 
 /// Admin-controlled custom claims Supabase nests under `app_metadata`. Both
-/// fields are optional on the wire so a token minted before the custom claims
-/// were configured fails CLOSED: a missing `role` is a `MalformedToken`, and a
-/// missing `approved` means not approved.
+/// fields are optional on the wire because newly registered Pending Accounts
+/// have no custom role claim. Current grants come from the live Account RPC.
 #[derive(Debug, Default, Deserialize)]
 struct AppMetadata {
     #[serde(default)]
     role: Option<String>,
-    #[serde(default)]
-    approved: bool,
 }
 
 /// Verify a token against the cached JWKS and return the in-token claims — the
@@ -54,7 +53,12 @@ struct AppMetadata {
 /// (`NoCachedSession` is detected one level up, by the caller that loads the row.)
 ///
 /// Pure: no SQLite, no network, never panics (Req 3 postconditions).
-pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims, AuthError> {
+pub fn verify_jwt(
+    access_token: &str,
+    jwks_cache: &str,
+    expected_issuer: &str,
+    allow_expired: bool,
+) -> Result<VerifiedClaims, AuthError> {
     // 1. JWKS presence/parse (MissingJwks before JwksParseError).
     if jwks_cache.trim().is_empty() {
         return Err(AuthError::MissingJwks("jwks_cache is empty".to_string()));
@@ -64,7 +68,9 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
     if jwks.keys.is_empty() {
         // A syntactically valid but empty set has no key to verify against; treat
         // it as missing rather than a parse failure.
-        return Err(AuthError::MissingJwks("jwks set contains no keys".to_string()));
+        return Err(AuthError::MissingJwks(
+            "jwks set contains no keys".to_string(),
+        ));
     }
 
     // 2. Decode the token header (MalformedToken on failure) and select the key.
@@ -80,10 +86,8 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
     let decoding_key = match &jwk.algorithm {
         AlgorithmParameters::RSA(rsa) => DecodingKey::from_rsa_components(&rsa.n, &rsa.e)
             .map_err(|e| AuthError::JwksParseError(format!("RSA key components invalid: {e}")))?,
-        AlgorithmParameters::EllipticCurve(ec) => {
-            DecodingKey::from_ec_components(&ec.x, &ec.y)
-                .map_err(|e| AuthError::JwksParseError(format!("EC key components invalid: {e}")))?
-        }
+        AlgorithmParameters::EllipticCurve(ec) => DecodingKey::from_ec_components(&ec.x, &ec.y)
+            .map_err(|e| AuthError::JwksParseError(format!("EC key components invalid: {e}")))?,
         other => {
             return Err(AuthError::JwksParseError(format!(
                 "unsupported JWKS key type: {other:?}"
@@ -102,7 +106,8 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
         .unwrap_or(Algorithm::RS256);
     let mut validation = Validation::new(alg);
     validation.validate_exp = false;
-    validation.validate_aud = false;
+    validation.set_audience(&["authenticated"]);
+    validation.set_issuer(&[expected_issuer]);
 
     let data = decode::<RawClaims>(access_token, &decoding_key, &validation).map_err(|e| {
         use jsonwebtoken::errors::ErrorKind;
@@ -120,25 +125,23 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
 
     // 4. Our own expiry check against the device clock, with skew tolerance.
     let now = crate::auth::device_now();
-    if claims.exp < now - CLOCK_SKEW_TOLERANCE_SECS {
+    if !allow_expired && claims.exp < now - CLOCK_SKEW_TOLERANCE_SECS {
         return Err(AuthError::TokenExpired(
             "token exp is in the past beyond the clock-skew tolerance".to_string(),
         ));
     }
 
-    // 5. Parse the role claim LAST, from the VERIFIED token's app_metadata only.
-    //    A token with no app_metadata.role is malformed for our purposes — it
-    //    cannot be mapped to a Syndes role, so it must not grant any access.
-    let role_str = claims.app_metadata.role.as_deref().ok_or_else(|| {
-        AuthError::MalformedToken("token app_metadata is missing the role claim".to_string())
-    })?;
-    let role = Role::from_claim(role_str)?;
+    // 5. The metadata role is for offline UI display only. Missing means
+    //    Student/Pending; it never grants a privileged operation.
+    let role = match claims.app_metadata.role.as_deref() {
+        Some(role) => Role::from_claim(role)?,
+        None => Role::Student,
+    };
 
     Ok(VerifiedClaims {
         sub: claims.sub,
         email: claims.email,
         role,
-        approved: claims.app_metadata.approved,
         exp: claims.exp,
     })
 }
@@ -146,23 +149,9 @@ pub fn verify_jwt(access_token: &str, jwks_cache: &str) -> Result<VerifiedClaims
 /// Select the verifying key. When the token carries a `kid` and the set has more
 /// than one key, match by `kid` (Req 3.2). With a single key and no `kid`, use
 /// that key. Returns `None` when nothing matches.
-fn select_key<'a>(
-    jwks: &'a JwkSet,
-    kid: Option<&str>,
-) -> Option<&'a jsonwebtoken::jwk::Jwk> {
+fn select_key<'a>(jwks: &'a JwkSet, kid: Option<&str>) -> Option<&'a jsonwebtoken::jwk::Jwk> {
     match kid {
-        Some(kid) => {
-            if let Some(k) = jwks.find(kid) {
-                return Some(k);
-            }
-            // A `kid` was given but did not match. If there is exactly one key,
-            // fall back to it; otherwise there is no unambiguous key.
-            if jwks.keys.len() == 1 {
-                jwks.keys.first()
-            } else {
-                None
-            }
-        }
+        Some(kid) => jwks.find(kid),
         // No `kid`: only unambiguous when there is exactly one key.
         None => {
             if jwks.keys.len() == 1 {
@@ -197,21 +186,45 @@ mod tests {
 
     #[test]
     fn empty_jwks_is_missing_jwks() {
-        let err = verify_jwt("a.b.c", "").unwrap_err();
+        let err = verify_jwt(
+            "a.b.c",
+            "",
+            "https://test-project.supabase.co/auth/v1",
+            false,
+        )
+        .unwrap_err();
         assert!(matches!(err, AuthError::MissingJwks(_)));
-        let err = verify_jwt("a.b.c", "   ").unwrap_err();
+        let err = verify_jwt(
+            "a.b.c",
+            "   ",
+            "https://test-project.supabase.co/auth/v1",
+            false,
+        )
+        .unwrap_err();
         assert!(matches!(err, AuthError::MissingJwks(_)));
     }
 
     #[test]
     fn unparseable_jwks_is_jwks_parse_error() {
-        let err = verify_jwt("a.b.c", "{not json").unwrap_err();
+        let err = verify_jwt(
+            "a.b.c",
+            "{not json",
+            "https://test-project.supabase.co/auth/v1",
+            false,
+        )
+        .unwrap_err();
         assert!(matches!(err, AuthError::JwksParseError(_)));
     }
 
     #[test]
     fn valid_json_but_no_keys_is_missing_jwks() {
-        let err = verify_jwt("a.b.c", r#"{"keys":[]}"#).unwrap_err();
+        let err = verify_jwt(
+            "a.b.c",
+            r#"{"keys":[]}"#,
+            "https://test-project.supabase.co/auth/v1",
+            false,
+        )
+        .unwrap_err();
         assert!(matches!(err, AuthError::MissingJwks(_)));
     }
 
@@ -219,7 +232,13 @@ mod tests {
     fn malformed_token_is_malformed_token() {
         // A JWKS with one RSA key so we get past the JWKS stage to header decode.
         let jwks = sample_rsa_jwks();
-        let err = verify_jwt("this-is-not-a-jwt", &jwks).unwrap_err();
+        let err = verify_jwt(
+            "this-is-not-a-jwt",
+            &jwks,
+            "https://test-project.supabase.co/auth/v1",
+            false,
+        )
+        .unwrap_err();
         assert!(matches!(err, AuthError::MalformedToken(_)));
     }
 
@@ -243,7 +262,6 @@ mod tests {
         let jwks: JwkSet = serde_json::from_str(&sample_rsa_jwks()).unwrap();
         assert!(select_key(&jwks, None).is_some());
         assert!(select_key(&jwks, Some("test-key")).is_some());
-        // Unmatched kid, single key => fall back to the one key.
-        assert!(select_key(&jwks, Some("other")).is_some());
+        assert!(select_key(&jwks, Some("other")).is_none());
     }
 }

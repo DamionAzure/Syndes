@@ -11,23 +11,43 @@ use std::sync::Mutex;
 
 #[derive(Default)]
 pub struct ModuleStore {
-    modules: Mutex<HashMap<String, Module>>,
+    modules: Mutex<HashMap<(String, String), Module>>,
 }
 
 impl ModuleStore {
-    pub fn insert(&self, module: Module) {
+    pub fn insert(&self, account_id: &str, module: Module) {
         let mut guard = self.modules.lock().expect("module store mutex poisoned");
-        guard.insert(module.module.id.clone(), module);
+        guard.insert((account_id.to_string(), module.module.id.clone()), module);
     }
 
     /// Clone out the module for a given id. Modules are small (one quiz/lesson),
     /// so cloning out of the lock rather than holding a borrow across the
     /// command body keeps the mutex critical section tiny.
-    pub fn get(&self, module_id: &str) -> Result<Module, AppError> {
+    pub fn get(&self, account_id: &str, module_id: &str) -> Result<Module, AppError> {
         let guard = self.modules.lock().expect("module store mutex poisoned");
         guard
-            .get(module_id)
+            .get(&(account_id.to_string(), module_id.to_string()))
             .cloned()
             .ok_or_else(|| AppError::ModuleNotFound(module_id.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_loaded_module_is_only_visible_to_the_account_that_loaded_it() {
+        let module = crate::loader::load_module("../../docs/example.module.json")
+            .or_else(|_| crate::loader::load_module("../../Documents/example.module.json"))
+            .unwrap();
+        let module_id = module.module.id.clone();
+        let store = ModuleStore::default();
+        store.insert("account-a", module);
+        assert!(store.get("account-a", &module_id).is_ok());
+        assert!(matches!(
+            store.get("account-b", &module_id),
+            Err(AppError::ModuleNotFound(_))
+        ));
     }
 }
