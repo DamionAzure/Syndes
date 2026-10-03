@@ -7,6 +7,37 @@
     "core:default",
     "opener:default",
     "core:event:default",
-    "deep-link:default"
+    "deep-link:default",
+    "fs:deny-default",
+    "fs:create-app-specific-dirs",
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        { "path": "$APPLOCALDATA/modules" },
+        { "path": "$APPLOCALDATA/modules/*" },
+        { "path": "$APPLOCALDATA/modules/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$APPLOCALDATA/modules/*" },
+        { "path": "$APPLOCALDATA/modules/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$APPLOCALDATA/modules/*" },
+        { "path": "$APPLOCALDATA/modules/**/*" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [
+        { "path": "$APPLOCALDATA/modules/*" },
+        { "path": "$APPLOCALDATA/modules/**/*" }
+      ]
+    }
   ]
 }
