@@ -121,7 +121,8 @@ pub fn normalize_answer(raw: String) -> String {
 ///
 /// Plaintext is read only to compute hashes and is never stored or logged (R2).
 #[tauri::command]
-pub fn seal_module(draft: DraftModule) -> Result<Module, AppError> {
+pub fn seal_module(draft: DraftModule, state: State<'_, AuthState>) -> Result<Module, AppError> {
+    require_teacher(&state, "seal a module")?;
     seal::seal_module(draft)
 }
 
@@ -129,7 +130,12 @@ pub fn seal_module(draft: DraftModule) -> Result<Module, AppError> {
 /// a question id + its plaintext answer and gets back the `{salt, answerHash}`
 /// to write into that question. Same seal path as `seal_module`, one at a time.
 #[tauri::command]
-pub fn seal_answer(question_id: String, plaintext_answer: String) -> Result<SealedAnswer, AppError> {
+pub fn seal_answer(
+    question_id: String,
+    plaintext_answer: String,
+    state: State<'_, AuthState>,
+) -> Result<SealedAnswer, AppError> {
+    require_teacher(&state, "seal an answer")?;
     seal::seal_answer(&question_id, &plaintext_answer)
 }
 
@@ -217,7 +223,11 @@ fn generate_module_from_request(request: GenerationRequest) -> Result<Module, Ap
 /// contract-valid Module out, with the guaranteed fallback on any failure. Thin
 /// wrapper over the shared `generate_module_from_request` helper.
 #[tauri::command]
-pub fn generate_module(request: GenerationRequest) -> Result<Module, AppError> {
+pub fn generate_module(
+    request: GenerationRequest,
+    state: State<'_, AuthState>,
+) -> Result<Module, AppError> {
+    require_teacher(&state, "generate a module")?;
     generate_module_from_request(request)
 }
 
@@ -232,8 +242,9 @@ pub fn generate_module(request: GenerationRequest) -> Result<Module, AppError> {
 /// Return the deterministic built-in scaffold catalog for the UI picker (spec 03
 /// R6). Pure - same ordered set every call, no network, no I/O.
 #[tauri::command]
-pub fn list_scaffolds() -> Vec<Scaffold> {
-    scaffold::builtin_scaffolds()
+pub fn list_scaffolds(state: State<'_, AuthState>) -> Result<Vec<Scaffold>, AppError> {
+    require_teacher(&state, "list authoring scaffolds")?;
+    Ok(scaffold::builtin_scaffolds())
 }
 
 /// Teacher picks a scaffold (and may override topic/grade/count); this builds the
@@ -241,7 +252,11 @@ pub fn list_scaffolds() -> Vec<Scaffold> {
 /// guaranteed-fallback path as `generate_module` (spec 03 R6/R4). An unknown
 /// scaffold id surfaces as a ValidationError BEFORE any generation is attempted.
 #[tauri::command]
-pub fn generate_from_scaffold(choice: ScaffoldChoice) -> Result<Module, AppError> {
+pub fn generate_from_scaffold(
+    choice: ScaffoldChoice,
+    state: State<'_, AuthState>,
+) -> Result<Module, AppError> {
+    require_teacher(&state, "generate a module")?;
     let request = scaffold::request_from_choice(&choice)?;
     generate_module_from_request(request)
 }
@@ -324,4 +339,56 @@ pub fn auth_resolve_role(require_privileged: bool, state: State<'_, AuthState>) 
 #[tauri::command]
 pub fn auth_logout(state: State<'_, AuthState>) -> Result<(), AppError> {
     state.store.clear_cached_session().map_err(AppError::from)
+}
+
+// --- Role-based authorization for teacher commands (RBAC) ---------------------
+//
+// The webview hides Teacher screens from Students, but that is only usability:
+// any page can call `invoke`. These checks are the enforcement. Every
+// teacher-side command calls `require_teacher` FIRST, before reading its input.
+// The role comes only from `resolve_access` (verified token, then online gate,
+// then the Student floor), never from anything the webview sends. If the auth
+// state was never managed (session DB failed to open), Tauri rejects the call
+// before it runs, which also fails closed.
+
+/// The policy, split out so it is testable without Tauri state: a verified
+/// Teacher or Admin who is not read-only.
+fn is_teacher_access(ctx: &AuthContext) -> bool {
+    ctx.role.is_privileged() && !ctx.read_only
+}
+
+fn require_teacher(state: &AuthState, action: &str) -> Result<AuthContext, AppError> {
+    let ctx = auth::resolve_access(state, true);
+    if is_teacher_access(&ctx) {
+        Ok(ctx)
+    } else {
+        Err(AppError::Forbidden(format!("only a signed-in teacher can {action}")))
+    }
+}
+
+#[cfg(test)]
+mod rbac_tests {
+    use super::*;
+    use crate::auth::{AuthSource, Role};
+
+    fn ctx(role: Role, read_only: bool, source: AuthSource) -> AuthContext {
+        AuthContext { role, read_only, source }
+    }
+
+    #[test]
+    fn verified_teacher_and_admin_are_allowed() {
+        assert!(is_teacher_access(&ctx(Role::Teacher, false, AuthSource::OfflineVerified)));
+        assert!(is_teacher_access(&ctx(Role::Admin, false, AuthSource::OnlineGate)));
+    }
+
+    #[test]
+    fn students_and_the_floor_are_refused() {
+        assert!(!is_teacher_access(&ctx(Role::Student, false, AuthSource::OfflineVerified)));
+        assert!(!is_teacher_access(&ctx(Role::Student, true, AuthSource::StudentReadOnly)));
+    }
+
+    #[test]
+    fn a_read_only_teacher_is_refused() {
+        assert!(!is_teacher_access(&ctx(Role::Teacher, true, AuthSource::OnlineGate)));
+    }
 }

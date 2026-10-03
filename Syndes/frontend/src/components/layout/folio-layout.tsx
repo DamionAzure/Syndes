@@ -4,6 +4,9 @@ type FolioLayoutProps = {
   rail: ReactNode;
   margin: ReactNode;
   children: ReactNode;
+  /** Accessible names for the two side regions; the lesson reader keeps the defaults. */
+  railLabel?: string;
+  marginLabel?: string;
 };
 
 /**
@@ -12,11 +15,17 @@ type FolioLayoutProps = {
  * above and below the reader, in source order. Rail and margin stay in view
  * while a long lesson scrolls.
  */
-export function FolioLayout({ rail, margin, children }: FolioLayoutProps) {
+export function FolioLayout({
+  rail,
+  margin,
+  children,
+  railLabel = "Lesson sequence",
+  marginLabel = "Study margin",
+}: FolioLayoutProps) {
   return (
     <div className="grid overflow-hidden rounded-xl border border-border bg-surface lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_17rem]">
       <aside
-        aria-label="Lesson sequence"
+        aria-label={railLabel}
         className="border-b border-border bg-surface-muted p-5 lg:border-r lg:border-b-0"
       >
         <div className="lg:sticky lg:top-8">{rail}</div>
@@ -25,7 +34,7 @@ export function FolioLayout({ rail, margin, children }: FolioLayoutProps) {
         <div className="mx-auto max-w-[44rem]">{children}</div>
       </div>
       <aside
-        aria-label="Study margin"
+        aria-label={marginLabel}
         className="border-t border-border p-6 lg:col-span-2 xl:col-span-1 xl:border-t-0 xl:border-l"
       >
         <div className="xl:sticky xl:top-8">{margin}</div>
