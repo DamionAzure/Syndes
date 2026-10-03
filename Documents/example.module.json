@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "_note": "Hand-authored fixture + demo fallback. The answer_hash/salt values below are PLACEHOLDERS — regenerate them Saturday with the real Rust normalizer+sealer so they match the core exactly. Do NOT ship these placeholder hashes; they will not validate against real scoring.",
+  "_note": "Hand-authored fixture + demo fallback. The salt/answer_hash values below were sealed with the real Rust core normalizer+hasher (SHA-256 over id:normalize(answer):salt), so they score correctly in the live core. Sealed answers: q1=Carbon dioxide, q2=Chlorophyll, q3=True. Regenerate via `cargo run --example seal_fixture` if the normalizer ever changes.",
   "module": {
     "id": "mod_science_photosynthesis_01",
     "type": "quiz",
@@ -25,16 +25,16 @@
         "kind": "multiple_choice",
         "prompt": "Which gas do plants take in to make food?",
         "options": ["Oxygen", "Carbon dioxide", "Nitrogen", "Hydrogen"],
-        "salt": "PLACEHOLDER_SALT_q1",
-        "answer_hash": "PLACEHOLDER_HASH_q1",
+        "salt": "1f202122232425262728292a2b2c2d2e",
+        "answer_hash": "e71155f37e7f3d82420aeb2262bac45687228e23a46fbf0c2ff39693f716a7ca",
         "points": 1
       },
       {
         "id": "q2",
         "kind": "identification",
         "prompt": "What is the green pigment in leaves that helps plants catch sunlight?",
-        "salt": "PLACEHOLDER_SALT_q2",
-        "answer_hash": "PLACEHOLDER_HASH_q2",
+        "salt": "3e3f404142434445464748494a4b4c4d",
+        "answer_hash": "5cdb82c007f5cf8c86a60df59bf1f23793776d5070fc669211c91766348ccc75",
         "points": 1
       },
       {
@@ -42,8 +42,8 @@
         "kind": "true_false",
         "prompt": "Photosynthesis puts oxygen into the air.",
         "options": ["True", "False"],
-        "salt": "PLACEHOLDER_SALT_q3",
-        "answer_hash": "PLACEHOLDER_HASH_q3",
+        "salt": "5d5e5f606162636465666768696a6b6c",
+        "answer_hash": "46a856620a257a52a48f4778b5e2cab86fc4ee83bd687e80e643074adb067042",
         "points": 1
       }
     ]
