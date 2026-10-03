@@ -23,7 +23,7 @@ function developmentRole(): AuthContext | null {
   // Dot access is required: Next inlines NEXT_PUBLIC_ variables only in this form.
   const role = process.env.NEXT_PUBLIC_SYNDES_DEV_ROLE;
   if (role !== "teacher" && role !== "admin") return null;
-  return { role, approved: true, readOnly: false, source: "offlineVerified" };
+  return { accountId: "development-account", active: true, role, approved: true, readOnly: false, source: "offlineVerified" };
 }
 
 /**

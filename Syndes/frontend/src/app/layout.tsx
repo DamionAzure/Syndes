@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import { AccessProvider } from "@/components/access/access-provider";
-import { AppShell } from "@/components/layout/app-shell";
+import { AppAccessShell } from "@/components/access/app-access-shell";
 import { preferenceScript } from "@/features/settings/preference-script";
 import "@/styles/globals.css";
 
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // The pre-paint script rewrites data-theme and data-controls, so React
     // must not treat those two attributes as a hydration mismatch.
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body>
         <AccessProvider>
-          <AppShell>{children}</AppShell>
+          <AppAccessShell>{children}</AppAccessShell>
         </AccessProvider>
       </body>
     </html>
