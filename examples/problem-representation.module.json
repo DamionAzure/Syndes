@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "module": {
+    "id": "mod_problem_representation_ai_01",
+    "type": "quiz",
+    "title": "Problem Representation in AI",
+    "grade_level": "tertiary"
+  },
+  "lesson": {
+    "blocks": [
+      {
+        "kind": "heading",
+        "text": "A problem as states"
+      },
+      {
+        "kind": "paragraph",
+        "text": "An AI search problem identifies the situations an agent can occupy, where it begins, and which states count as success."
+      },
+      {
+        "kind": "paragraph",
+        "text": "Actions move the agent between states. A transition model describes how an action changes the current state."
+      },
+      {
+        "kind": "heading",
+        "text": "Picture a route"
+      },
+      {
+        "kind": "paragraph",
+        "text": "Imagine finding a way from a library to a classroom. Your current location is a state; the library is the initial state, the classroom is a goal state, and each allowed move is an action."
+      }
+    ]
+  },
+  "quiz": {
+    "hash_algo": "SHA256",
+    "normalization": "lowercase|trim|strip_punctuation",
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multiple_choice",
+        "prompt": "Which part of a search problem tells us where the agent begins?",
+        "options": [
+          "Initial state",
+          "Goal state",
+          "Transition model",
+          "Action cost"
+        ],
+        "salt": "818f6d91b0db8005076d39ad",
+        "answer_hash": "f7e3e1779fd2c3300ddbec9fa5fcb71dc0620eec727b99f5590fe79e4a87a946",
+        "points": 1
+      },
+      {
+        "id": "q2",
+        "kind": "multiple_choice",
+        "prompt": "What describes how an action changes the current state?",
+        "options": [
+          "Goal state",
+          "State space",
+          "Transition model",
+          "Initial state"
+        ],
+        "salt": "2d021f4ca47332fb571d14a1",
+        "answer_hash": "50623c660908199dd8362b53e9945d926fa311e589152103e54a094027da4aa9",
+        "points": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acassist guided module preview</title>
+  <style>
+    :root { color-scheme: dark; --ink:#070B2E; --text:#F4F5FF; --muted:#A9AED6; --azure:#7CCBFF; --violet:#8B2EFF; --indigo:#3A4BFF; --glass:rgba(255,255,255,.08); --glass-strong:rgba(255,255,255,.12); --border:rgba(255,255,255,.18); --solid:#1B2260; --solid-strong:#232B6E; font:17px/1.55 Lexend,ui-sans-serif,system-ui,sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--text); background:radial-gradient(60% 50% at 14% 18%,rgba(124,34,240,.38),transparent 70%),radial-gradient(50% 45% at 88% 90%,rgba(27,140,255,.25),transparent 70%),var(--ink); }
+    button,a,input { font:inherit; }
+    button { cursor:pointer; }
+    button:disabled { cursor:not-allowed; opacity:.48; }
+    [hidden] { display:none!important; }
+    :focus-visible { outline:3px solid var(--azure); outline-offset:3px; }
+    .topbar { border-bottom:1px solid rgba(255,255,255,.09); }
+    .topbar-inner { max-width:72rem; min-height:76px; margin:auto; padding:1rem 1.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .brand { font-size:1.25rem; font-weight:700; letter-spacing:-.02em; white-space:nowrap; }
+    .brand-mark { display:inline-block; width:1.15rem; height:1.15rem; margin-right:.55rem; border:3px solid var(--azure); border-radius:.35rem; transform:rotate(-15deg); vertical-align:-.13rem; }
+    .nav { display:flex; align-items:center; gap:1.5rem; }
+    .nav a { color:var(--muted); text-decoration:none; min-height:44px; display:inline-flex; align-items:center; }
+    .nav a[aria-current="page"] { color:var(--text); font-weight:600; border-bottom:2px solid var(--azure); }
+    .status { color:var(--azure); font-size:.9rem; white-space:nowrap; }
+    .status::before { content:""; display:inline-block; width:.55rem; height:.55rem; margin-right:.45rem; border-radius:50%; background:#3DDC97; }
+    main { max-width:56rem; margin:auto; padding:3rem 1.5rem 5rem; }
+    .crumb { color:var(--muted); font-size:.9rem; margin-bottom:1rem; }
+    .crumb button { padding:.2rem; border:0; background:none; color:var(--muted); text-decoration:underline; }
+    .glass { position:relative; isolation:isolate; border-radius:28px; background:var(--glass); backdrop-filter:blur(16px) saturate(140%); -webkit-backdrop-filter:blur(16px) saturate(140%); box-shadow:0 8px 24px rgba(2,4,24,.45); }
+    .glass::before { content:""; position:absolute; inset:0; padding:1px; border-radius:inherit; background:linear-gradient(155deg,#C84BDD,transparent 40%,transparent 60%,#1B8CFF); -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
+    .panel { padding:2.25rem 2.5rem; }
+    .narrow { max-width:44rem; margin:0 auto; }
+    .eyebrow { color:var(--azure); font-size:.86rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+    h1 { margin:.55rem 0 .8rem; font-size:clamp(2rem,3vw,2.45rem); line-height:1.16; letter-spacing:-.025em; }
+    h2 { margin:0 0 .85rem; font-size:1.45rem; line-height:1.25; }
+    p { margin:0; }
+    .lede { color:var(--muted); max-width:62ch; }
+    .meta { color:var(--muted); font-size:.9rem; margin:1rem 0 2rem; }
+    .outcomes { padding:1.25rem 1.5rem; border-radius:20px; background:var(--glass-strong); }
+    .outcomes h2 { font-size:1rem; margin:0 0 .6rem; }
+    .outcomes ul { margin:.5rem 0 0; padding-left:1.3rem; }
+    .outcomes li+li { margin-top:.45rem; }
+    .outline { list-style:none; padding:0; margin:1.6rem 0 0; border-top:1px solid var(--border); }
+    .outline li { display:flex; gap:1rem; align-items:center; padding:.8rem 0; border-bottom:1px solid var(--border); }
+    .outline-number { display:grid; place-items:center; flex:none; width:2rem; height:2rem; border-radius:.7rem; background:rgba(124,203,255,.13); color:var(--azure); font-size:.85rem; font-weight:700; }
+    .outline-title { flex:1; font-weight:500; }
+    .outline-time { color:var(--muted); font-size:.85rem; }
+    .actions { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; margin-top:1.8rem; }
+    .button { display:inline-flex; align-items:center; justify-content:center; min-height:48px; border:0; border-radius:20px; padding:.65rem 1.4rem; color:#fff; font-weight:600; background:linear-gradient(100deg,var(--violet),var(--indigo)); box-shadow:0 8px 28px rgba(139,46,255,.3); }
+    .button.secondary { background:rgba(255,255,255,.08); box-shadow:inset 0 0 0 1px rgba(255,255,255,.42); }
+    .button.block { width:100%; }
+    .lesson-progress,.quiz-progress { color:var(--muted); font-size:.9rem; margin-bottom:.55rem; }
+    .progress { height:.6rem; overflow:hidden; background:rgba(255,255,255,.14); border-radius:99px; margin-bottom:1.8rem; }
+    .progress span { display:block; height:100%; border-radius:inherit; background:linear-gradient(100deg,var(--violet),var(--indigo)); }
+    .lesson-content { max-width:62ch; }
+    .lesson-content h2 { margin:1.75rem 0 .6rem; }
+    .lesson-content h2:first-child { margin-top:0; }
+    .lesson-content p { margin:0 0 1rem; line-height:1.75; }
+    .prompt { margin:1.6rem 0; font-size:1.45rem; line-height:1.3; }
+    .choices { display:grid; gap:.7rem; }
+    .choice { display:flex; align-items:center; gap:1rem; min-height:58px; padding:.8rem 1.1rem; border-radius:20px; border:1px solid rgba(255,255,255,.42); background:var(--glass); }
+    .choice:has(input:checked) { background:rgba(61,177,255,.18); border-color:var(--azure); }
+    .choice input { appearance:none; width:1.25rem; height:1.25rem; flex:none; margin:0; border:2px solid var(--muted); border-radius:50%; }
+    .choice input:checked { border:6px solid var(--azure); background:#243D6F; }
+    .short-answer { display:grid; gap:.5rem; }
+    .short-answer input { width:100%; min-height:52px; padding:.7rem 1rem; border:1px solid rgba(255,255,255,.42); border-radius:14px; color:var(--text); background:rgba(4,7,32,.45); }
+    .score { display:grid; place-items:center; width:10rem; height:10rem; margin:0 auto 1.5rem; border-radius:50%; background:conic-gradient(var(--azure) calc(var(--pct)*1%),rgba(255,255,255,.14) 0); }
+    .score-inner { display:grid; place-items:center; width:8.5rem; height:8.5rem; border-radius:50%; background:#0A1040; text-align:center; }
+    .score-inner strong { font-size:2rem; line-height:1; }
+    .score-inner span { color:var(--muted); font-size:.8rem; }
+    .review { list-style:none; padding:0; margin:1.5rem 0 0; }
+    .review li { display:flex; gap:1rem; justify-content:space-between; padding:.8rem 0; border-top:1px solid var(--border); }
+    .review b { flex:none; font-size:.85rem; }
+    .review .ok { color:#3DDC97; } .review .no { color:#FF8FA5; }
+    .footer-tools { display:flex; justify-content:flex-end; margin-top:1rem; }
+    .text-button { min-height:44px; padding:.25rem; border:0; background:none; color:var(--muted); text-decoration:underline; }
+    .error { color:#FFB8C7; margin-top:1rem; }
+    @media (max-width:640px) { main { padding-top:2rem; } .panel { padding:1.5rem; } .nav { order:3; width:100%; justify-content:space-between; } .status { font-size:.78rem; } .outline-time { display:none; } }
+    @media (prefers-reduced-transparency:reduce) { .glass { background:var(--solid); backdrop-filter:none; -webkit-backdrop-filter:none; } .outcomes,.choice { background:var(--solid-strong); } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Acassist</div>
+    <nav class="nav" aria-label="Preview navigation"><a href="full-module-preview.html" aria-current="page">Module</a><a href="modules-library-preview.html">Modules library</a></nav>
+    <span class="status">Lesson and quiz available offline</span>
+  </div></header>
+  <main>
+    <div class="crumb"><button id="back-overview" type="button">Module overview</button> <span id="crumb-detail"></span></div>
+    <section id="overview-view" class="glass panel" aria-labelledby="overview-heading">
+      <div class="eyebrow" id="overview-eyebrow">Quick overview</div>
+      <h1 id="overview-heading" tabindex="-1"></h1>
+      <p class="lede" id="overview-summary"></p>
+      <p class="meta" id="overview-meta"></p>
+      <div class="outcomes"><h2>What you will learn</h2><ul id="outcomes"></ul></div>
+      <ol class="outline" id="outline"></ol>
+      <div class="actions"><button id="start-module" class="button block" type="button">Start module</button></div>
+    </section>
+    <section id="lesson-view" class="glass panel narrow" aria-labelledby="lesson-heading" hidden>
+      <div class="lesson-progress" id="lesson-count"></div>
+      <div class="progress" id="lesson-progress" role="progressbar" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1"><span></span></div>
+      <div class="eyebrow">Lesson</div>
+      <h1 id="lesson-heading" tabindex="-1"></h1>
+      <article class="lesson-content" id="lesson-content"></article>
+      <div class="actions"><button id="previous-lesson" class="button secondary" type="button">Previous</button><button id="next-lesson" class="button" type="button">Next lesson</button></div>
+    </section>
+    <section id="quiz-view" class="glass panel narrow" aria-labelledby="quiz-heading" hidden>
+      <div class="quiz-progress" id="quiz-count"></div>
+      <div class="progress" id="quiz-progress" role="progressbar" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1"><span></span></div>
+      <div class="eyebrow">Short quiz</div>
+      <h1 id="quiz-heading" tabindex="-1"></h1>
+      <h2 class="prompt" id="question-prompt"></h2>
+      <div class="choices" id="choices"></div>
+      <div class="actions"><button id="previous-question" class="button secondary" type="button">Previous</button><button id="next-question" class="button" type="button" disabled>Next question</button></div>
+    </section>
+    <section id="result-view" class="glass panel narrow" aria-labelledby="result-heading" hidden>
+      <div class="score" id="score-ring"><div class="score-inner"><strong id="score-percent">0%</strong><span>on this device</span></div></div>
+      <h1 id="result-heading" tabindex="-1">Module complete</h1>
+      <p class="lede" id="result-summary"></p>
+      <ul class="review" id="review"></ul>
+      <div class="actions"><button id="review-lessons" class="button secondary" type="button">Review lessons</button><button id="retry-quiz" class="button" type="button">Try quiz again</button></div>
+    </section>
+    <div class="footer-tools"><button id="open-file" class="text-button" type="button">Preview another module JSON</button><input id="file" type="file" accept=".json,application/json" hidden></div>
+    <p id="error" class="error" role="alert" hidden></p>
+  </main>
+  <script id="module-json" type="application/json">{"schema_version":"1.1","module":{"id":"mod_it2206_problem_representation_full_01","type":"lesson","title":"Problem Representation in AI","subject":"Artificial Intelligence","grade_level":"tertiary","source":{"title":"IT2206 02 Handout 1","pages":[1,2,3,4],"adaptation":"Paraphrased teacher-provided source"}},"overview":{"title":"Quick overview","summary":"Learn how an AI task becomes a search problem, how different representations guide a solution, and how to judge whether a method is useful.","outcomes":["Identify the states, goals, actions, and costs in a problem.","Compare state-space search, problem reduction, and production rules.","Use completeness, cost, time, and memory to discuss a method."]},"lessons":[{"id":"lesson_01","title":"Build a problem model","estimated_minutes":4,"blocks":[{"kind":"heading","text":"Name the pieces"},{"kind":"paragraph","text":"A search problem begins with a set of possible states, an initial state, and one or more goal states. Actions can move an agent from one state to another, while a transition model describes each change."},{"kind":"paragraph","text":"A path is a sequence of actions. A solution is a path that reaches a goal. An action cost can help compare possible paths when some solutions are more expensive than others."},{"kind":"heading","text":"Keep the useful details"},{"kind":"paragraph","text":"A good abstraction leaves out details that do not affect the decision while preserving actions that still work in the real situation. Imagine a route from a library to a classroom: locations are states, walking is an action, and reaching the classroom is the goal."}]},{"id":"lesson_02","title":"Characterize the task","estimated_minutes":3,"blocks":[{"kind":"heading","text":"Choose a useful formulation"},{"kind":"paragraph","text":"A standardized task has a precise setup that makes methods easy to compare. A real-world task usually brings extra constraints, incomplete information, and choices that depend on context."},{"kind":"paragraph","text":"Ask whether a large task can be divided into smaller tasks. Also ask what happens after an action: can it be ignored, undone, or is it irreversible? These properties affect which search method is suitable."},{"kind":"heading","text":"Knowledge and uncertainty"},{"kind":"paragraph","text":"An AI method may need a substantial knowledge base, human input, and a way to handle uncertain or irrelevant information. Heuristics guide search when exhaustive exploration is impractical; learning can improve behavior from experience."}]},{"id":"lesson_03","title":"Search through states","estimated_minutes":5,"blocks":[{"kind":"heading","text":"Forward and backward search"},{"kind":"paragraph","text":"State-space search treats each possible situation as a state and actions as connections. Forward search starts at the initial state and explores actions toward a goal. Backward search starts from a goal description and asks which earlier actions could lead to it."},{"kind":"heading","text":"Make a state concrete"},{"kind":"paragraph","text":"In a sliding-tile puzzle, a state records where the tiles are. In a water-jug task, a pair of numbers can record the amount in each jug. Moves or pours create the next state."},{"kind":"heading","text":"Know the limit"},{"kind":"paragraph","text":"A state space can become too large to list or explore completely. Time and memory limits matter, so a useful representation and a selective search strategy are important."}]},{"id":"lesson_04","title":"Reduce a hard problem","estimated_minutes":3,"blocks":[{"kind":"heading","text":"Break it into subproblems"},{"kind":"paragraph","text":"Problem reduction replaces one difficult task with smaller tasks whose results can be combined. The structure can be described with AND and OR relationships."},{"kind":"paragraph","text":"With AND, every required subproblem must be solved. With OR, solving any one of several alternatives is enough."},{"kind":"heading","text":"Try an everyday example"},{"kind":"paragraph","text":"A class trip may need both transport and permission forms: that is an AND relationship. If transport can be a bus or a train, choosing either acceptable option is an OR relationship."}]},{"id":"lesson_05","title":"Apply production rules","estimated_minutes":5,"blocks":[{"kind":"heading","text":"Use condition and action rules"},{"kind":"paragraph","text":"A production rule pairs an IF condition with a THEN action. Working memory holds the current facts. When a condition matches those facts, the rule can be applied and working memory may change."},{"kind":"paragraph","text":"A control system chooses which applicable rule to use and when to stop. A rule applier carries out that choice. When several rules match, the system needs a conflict-resolution strategy."},{"kind":"heading","text":"Choose among matching rules"},{"kind":"paragraph","text":"A system might prefer a more specific rule, a rule based on recent facts, or the first rule in an ordered list. Refraction prevents a fired rule from repeating until its matching facts change."},{"kind":"paragraph","text":"Rules are modular and can be edited independently. As a rule set grows, however, overlapping rules and hard-to-follow control flow require careful review."}]},{"id":"lesson_06","title":"Judge the method","estimated_minutes":4,"blocks":[{"kind":"heading","text":"Ask four performance questions"},{"kind":"paragraph","text":"Completeness asks whether a method can find a solution when one exists. Cost optimality asks whether it can find a least-cost solution. Time complexity concerns the work needed; space complexity concerns memory."},{"kind":"heading","text":"Describe search size"},{"kind":"paragraph","text":"Branching factor is the number of next states a step may create. Solution depth counts the actions in an optimal path, while maximum path length describes how long any explored path could become."},{"kind":"paragraph","text":"These measures help compare methods for the same problem. A method that works well for a small state space may become too slow or memory-hungry for a larger one."}]}],"quiz":{"title":"Quick check","hash_algo":"SHA256","normalization":"lowercase|trim|strip_punctuation","questions":[{"id":"q1","kind":"multiple_choice","prompt":"Which term names the set of situations an agent could occupy?","options":["State space","Initial state","Action cost","Goal test"],"salt":"c3a3a990b9c366bddd38a1d2","answer_hash":"1e8c60236f4ed097c2ea3139c449fe34b3639df99dc8b6d71297d93ddba37543","points":1},{"id":"q2","kind":"multiple_choice","prompt":"Which property describes a step that can be undone?","options":["Recoverable","Irrecoverable","Standardized","Heuristic"],"salt":"adfca5d29d908f15416425a3","answer_hash":"874358c8e4ab483987a69e5d92b7afcf42943f041ff328c7592864daeec500a0","points":1},{"id":"q3","kind":"multiple_choice","prompt":"Which search begins at the initial state and explores actions toward a goal?","options":["Backward search","Forward search","Problem reduction","Rule refraction"],"salt":"befa5f8841cc255a0c9b38d2","answer_hash":"068d0f9a4b8e2a9f1a29a56d1ccbfa4852e4e8adb721eaa4a767ff6a71a97eab","points":1},{"id":"q4","kind":"multiple_choice","prompt":"In an AND relationship, what is required?","options":["One alternative succeeds","All required subproblems succeed","The first rule fires","The cheapest action is skipped"],"salt":"ac07cc9c1827ffd969dfa3bf","answer_hash":"6fd7876983695b41b6b0937be621e1dd65f3452ae6ce7f0f2220eea1b92976fb","points":1},{"id":"q5","kind":"multiple_choice","prompt":"What does a production rule pair?","options":["A condition and an action","Two goal states","A path and its depth","Time and memory"],"salt":"f15c2d4470ef7b11afecdb00","answer_hash":"08b74491ad67027e6a00286c1c9512e393de179962e5f441556f2461e6b38bbd","points":1},{"id":"q6","kind":"multiple_choice","prompt":"Which measure asks whether a solution will be found when one exists?","options":["Space complexity","Cost optimality","Completeness","Branching factor"],"salt":"40e35d36e2b4e77d5282a756","answer_hash":"07054147b3e619f048d3917d12c2b01a3340649f938de1c8a8ea41afb591d417","points":1}]}}</script>
+  <script>
+    const $ = id => document.getElementById(id);
+    let data, lessonIndex = 0, questionIndex = 0, answers = [];
+    const viewIds = ['overview-view','lesson-view','quiz-view','result-view'];
+    function adaptAndValidate(raw) {
+      if (!raw || !['1.0','1.1'].includes(raw.schema_version) || typeof raw.module?.title !== 'string') throw new Error('Expected an Acassist v1.0 or v1.1 module.');
+      const module = raw.schema_version === '1.0' ? {
+        ...raw, overview: { title:'Quick overview', summary:`Read this module, then take its short quiz.`, outcomes:[] },
+        lessons: raw.lesson?.blocks?.length ? [{ id:'lesson_01', title:raw.module.title, estimated_minutes:0, blocks:raw.lesson.blocks }] : []
+      } : raw;
+      if (typeof module.overview?.summary !== 'string' || !Array.isArray(module.overview?.outcomes)) throw new Error('The overview is invalid.');
+      if (!Array.isArray(module.lessons) || !module.lessons.every(l => typeof l.id === 'string' && typeof l.title === 'string' && Array.isArray(l.blocks) && l.blocks.every(b => ['heading','paragraph'].includes(b.kind) && typeof b.text === 'string'))) throw new Error('The lessons are invalid.');
+      if (!module.lessons.length) throw new Error('This guided preview needs at least one lesson.');
+      if (module.quiz && (!Array.isArray(module.quiz.questions) || !module.quiz.questions.every(q => typeof q.id === 'string' && typeof q.prompt === 'string' && ['multiple_choice','true_false','identification'].includes(q.kind) && typeof q.answer_hash === 'string' && typeof q.salt === 'string' && (q.kind !== 'multiple_choice' || Array.isArray(q.options))))) throw new Error('The quiz is invalid.');
+      return module;
+    }
+    function show(id) {
+      viewIds.forEach(view => { $(view).hidden = view !== id; });
+      $('crumb-detail').textContent = id === 'overview-view' ? '' : ` / ${data.module.title}`;
+      const heading = $(id).querySelector('h1');
+      heading?.focus();
+      window.scrollTo(0, 0);
+    }
+    function renderOverview() {
+      $('overview-heading').textContent = data.module.title;
+      $('overview-summary').textContent = data.overview.summary;
+      const count = data.quiz?.questions?.length || 0;
+      const minutes = data.lessons.reduce((sum,lesson) => sum + (Number(lesson.estimated_minutes) || 0), 0);
+      $('overview-meta').textContent = `${data.lessons.length} lessons · ${count} quiz questions${minutes ? ` · about ${minutes} min reading` : ''}`;
+      $('outcomes').replaceChildren();
+      data.overview.outcomes.forEach(outcome => { const li=document.createElement('li'); li.textContent=outcome; $('outcomes').append(li); });
+      $('outline').replaceChildren();
+      data.lessons.forEach((lesson,i) => {
+        const li=document.createElement('li'), num=document.createElement('span'), title=document.createElement('span'), time=document.createElement('span');
+        num.className='outline-number'; num.textContent=String(i+1);
+        title.className='outline-title'; title.textContent=lesson.title;
+        time.className='outline-time'; time.textContent=lesson.estimated_minutes ? `${lesson.estimated_minutes} min` : '';
+        li.append(num,title,time); $('outline').append(li);
+      });
+    }
+    function renderLesson() {
+      const lesson=data.lessons[lessonIndex];
+      $('lesson-count').textContent=`Lesson ${lessonIndex+1} of ${data.lessons.length}`;
+      $('lesson-progress').setAttribute('aria-valuemax',String(data.lessons.length));
+      $('lesson-progress').setAttribute('aria-valuenow',String(lessonIndex+1));
+      $('lesson-progress').setAttribute('aria-label',`Lesson ${lessonIndex+1} of ${data.lessons.length}`);
+      $('lesson-progress').firstElementChild.style.width=`${(lessonIndex+1)/data.lessons.length*100}%`;
+      $('lesson-heading').textContent=lesson.title;
+      $('lesson-content').replaceChildren();
+      lesson.blocks.forEach(block => { const element=document.createElement(block.kind==='heading'?'h2':'p'); element.textContent=block.text; $('lesson-content').append(element); });
+      $('previous-lesson').textContent=lessonIndex===0?'Overview':'Previous lesson';
+      $('next-lesson').textContent=lessonIndex===data.lessons.length-1?(data.quiz?.questions?.length?'Start short quiz':'Finish module'):'Next lesson';
+      show('lesson-view');
+    }
+    function renderQuestion() {
+      const questions=data.quiz.questions, q=questions[questionIndex];
+      $('quiz-count').textContent=`Question ${questionIndex+1} of ${questions.length}`;
+      $('quiz-progress').setAttribute('aria-valuemax',String(questions.length));
+      $('quiz-progress').setAttribute('aria-valuenow',String(questionIndex+1));
+      $('quiz-progress').setAttribute('aria-label',`Question ${questionIndex+1} of ${questions.length}`);
+      $('quiz-progress').firstElementChild.style.width=`${(questionIndex+1)/questions.length*100}%`;
+      $('quiz-heading').textContent=data.quiz.title||'Quick check';
+      $('question-prompt').textContent=q.prompt;
+      $('choices').replaceChildren();
+      if (q.kind==='identification') {
+        const label=document.createElement('label'), input=document.createElement('input');
+        label.className='short-answer'; label.textContent='Your answer'; input.type='text'; input.value=answers[questionIndex]||'';
+        input.addEventListener('input',()=>{ answers[questionIndex]=input.value; $('next-question').disabled=!input.value.trim(); });
+        label.append(input); $('choices').append(label);
+      } else {
+        (q.kind==='true_false'?['True','False']:q.options).forEach(option => {
+          const label=document.createElement('label'), input=document.createElement('input'), span=document.createElement('span');
+          label.className='choice'; input.type='radio'; input.name=q.id; input.value=option; input.checked=answers[questionIndex]===option;
+          input.addEventListener('change',()=>{ answers[questionIndex]=option; $('next-question').disabled=false; });
+          span.textContent=option; label.append(input,span); $('choices').append(label);
+        });
+      }
+      $('next-question').disabled=!String(answers[questionIndex]||'').trim();
+      $('next-question').textContent=questionIndex===questions.length-1?'Submit quiz':'Next question';
+      $('previous-question').textContent=questionIndex===0?'Last lesson':'Previous question';
+      show('quiz-view');
+    }
+    function normalize(answer) { return answer.toLowerCase().trim().replace(/[\p{P}]/gu,''); }
+    async function check(q,answer) {
+      const raw=new TextEncoder().encode(`${q.id}:${normalize(answer)}:${q.salt}`);
+      const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',raw));
+      return [...digest].map(byte=>byte.toString(16).padStart(2,'0')).join('')===q.answer_hash;
+    }
+    async function finishQuiz() {
+      if (!crypto?.subtle) throw new Error('Local scoring is unavailable in this browser preview.');
+      const results=await Promise.all(data.quiz.questions.map((q,i)=>check(q,answers[i]||'')));
+      const score=results.filter(Boolean).length, total=results.length, percent=Math.round(score/total*100);
+      $('score-ring').style.setProperty('--pct',String(percent));
+      $('score-percent').textContent=`${percent}%`;
+      $('result-summary').textContent=`${score} of ${total} correct. Scored on this device without a connection.`;
+      $('review').replaceChildren();
+      data.quiz.questions.forEach((q,i)=>{
+        const li=document.createElement('li'), prompt=document.createElement('span'), status=document.createElement('b');
+        prompt.textContent=q.prompt; status.textContent=results[i]?'Correct':'Not quite'; status.className=results[i]?'ok':'no';
+        li.append(prompt,status); $('review').append(li);
+      });
+      show('result-view');
+    }
+    function load(raw) {
+      data=adaptAndValidate(raw); lessonIndex=0; questionIndex=0; answers=[];
+      $('error').hidden=true; renderOverview(); show('overview-view');
+    }
+    $('back-overview').addEventListener('click',()=>show('overview-view'));
+    $('start-module').addEventListener('click',()=>{ lessonIndex=0; renderLesson(); });
+    $('previous-lesson').addEventListener('click',()=>{ if (lessonIndex===0) show('overview-view'); else { lessonIndex--; renderLesson(); } });
+    $('next-lesson').addEventListener('click',()=>{ if (lessonIndex<data.lessons.length-1) { lessonIndex++; renderLesson(); } else if (data.quiz?.questions?.length) { questionIndex=0; renderQuestion(); } else { $('result-summary').textContent='You finished every lesson.'; $('review').replaceChildren(); $('score-ring').hidden=true; show('result-view'); } });
+    $('previous-question').addEventListener('click',()=>{ if (questionIndex===0) { lessonIndex=data.lessons.length-1; renderLesson(); } else { questionIndex--; renderQuestion(); } });
+    $('next-question').addEventListener('click',async()=>{ if (questionIndex<data.quiz.questions.length-1) { questionIndex++; renderQuestion(); } else { try { await finishQuiz(); } catch(error) { $('error').textContent=error.message; $('error').hidden=false; } } });
+    $('review-lessons').addEventListener('click',()=>{ lessonIndex=0; renderLesson(); });
+    $('retry-quiz').addEventListener('click',()=>{ questionIndex=0; answers=[]; renderQuestion(); });
+    $('open-file').addEventListener('click',()=>$('file').click());
+    $('file').addEventListener('change',async event=>{ const file=event.target.files?.[0]; if (!file) return; try { load(JSON.parse(await file.text())); } catch(error) { $('error').textContent=error.message; $('error').hidden=false; } event.target.value=''; });
+    load(JSON.parse($('module-json').textContent));
+  </script>
+</body>
+</html>

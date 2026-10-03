@@ -1,0 +1,292 @@
+{
+  "schema_version": "1.1",
+  "module": {
+    "id": "mod_it2206_problem_representation_full_01",
+    "type": "lesson",
+    "title": "Problem Representation in AI",
+    "subject": "Artificial Intelligence",
+    "grade_level": "tertiary",
+    "source": {
+      "title": "IT2206 02 Handout 1",
+      "pages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "adaptation": "Paraphrased teacher-provided source"
+    }
+  },
+  "overview": {
+    "title": "Quick overview",
+    "summary": "Learn how an AI task becomes a search problem, how different representations guide a solution, and how to judge whether a method is useful.",
+    "outcomes": [
+      "Identify the states, goals, actions, and costs in a problem.",
+      "Compare state-space search, problem reduction, and production rules.",
+      "Use completeness, cost, time, and memory to discuss a method."
+    ]
+  },
+  "lessons": [
+    {
+      "id": "lesson_01",
+      "title": "Build a problem model",
+      "estimated_minutes": 4,
+      "blocks": [
+        {
+          "kind": "heading",
+          "text": "Name the pieces"
+        },
+        {
+          "kind": "paragraph",
+          "text": "A search problem begins with a set of possible states, an initial state, and one or more goal states. Actions can move an agent from one state to another, while a transition model describes each change."
+        },
+        {
+          "kind": "paragraph",
+          "text": "A path is a sequence of actions. A solution is a path that reaches a goal. An action cost can help compare possible paths when some solutions are more expensive than others."
+        },
+        {
+          "kind": "heading",
+          "text": "Keep the useful details"
+        },
+        {
+          "kind": "paragraph",
+          "text": "A good abstraction leaves out details that do not affect the decision while preserving actions that still work in the real situation. Imagine a route from a library to a classroom: locations are states, walking is an action, and reaching the classroom is the goal."
+        }
+      ]
+    },
+    {
+      "id": "lesson_02",
+      "title": "Characterize the task",
+      "estimated_minutes": 3,
+      "blocks": [
+        {
+          "kind": "heading",
+          "text": "Choose a useful formulation"
+        },
+        {
+          "kind": "paragraph",
+          "text": "A standardized task has a precise setup that makes methods easy to compare. A real-world task usually brings extra constraints, incomplete information, and choices that depend on context."
+        },
+        {
+          "kind": "paragraph",
+          "text": "Ask whether a large task can be divided into smaller tasks. Also ask what happens after an action: can it be ignored, undone, or is it irreversible? These properties affect which search method is suitable."
+        },
+        {
+          "kind": "heading",
+          "text": "Knowledge and uncertainty"
+        },
+        {
+          "kind": "paragraph",
+          "text": "An AI method may need a substantial knowledge base, human input, and a way to handle uncertain or irrelevant information. Heuristics guide search when exhaustive exploration is impractical; learning can improve behavior from experience."
+        }
+      ]
+    },
+    {
+      "id": "lesson_03",
+      "title": "Search through states",
+      "estimated_minutes": 5,
+      "blocks": [
+        {
+          "kind": "heading",
+          "text": "Forward and backward search"
+        },
+        {
+          "kind": "paragraph",
+          "text": "State-space search treats each possible situation as a state and actions as connections. Forward search starts at the initial state and explores actions toward a goal. Backward search starts from a goal description and asks which earlier actions could lead to it."
+        },
+        {
+          "kind": "heading",
+          "text": "Make a state concrete"
+        },
+        {
+          "kind": "paragraph",
+          "text": "In a sliding-tile puzzle, a state records where the tiles are. In a water-jug task, a pair of numbers can record the amount in each jug. Moves or pours create the next state."
+        },
+        {
+          "kind": "heading",
+          "text": "Know the limit"
+        },
+        {
+          "kind": "paragraph",
+          "text": "A state space can become too large to list or explore completely. Time and memory limits matter, so a useful representation and a selective search strategy are important."
+        }
+      ]
+    },
+    {
+      "id": "lesson_04",
+      "title": "Reduce a hard problem",
+      "estimated_minutes": 3,
+      "blocks": [
+        {
+          "kind": "heading",
+          "text": "Break it into subproblems"
+        },
+        {
+          "kind": "paragraph",
+          "text": "Problem reduction replaces one difficult task with smaller tasks whose results can be combined. The structure can be described with AND and OR relationships."
+        },
+        {
+          "kind": "paragraph",
+          "text": "With AND, every required subproblem must be solved. With OR, solving any one of several alternatives is enough."
+        },
+        {
+          "kind": "heading",
+          "text": "Try an everyday example"
+        },
+        {
+          "kind": "paragraph",
+          "text": "A class trip may need both transport and permission forms: that is an AND relationship. If transport can be a bus or a train, choosing either acceptable option is an OR relationship."
+        }
+      ]
+    },
+    {
+      "id": "lesson_05",
+      "title": "Apply production rules",
+      "estimated_minutes": 5,
+      "blocks": [
+        {
+          "kind": "heading",
+          "text": "Use condition and action rules"
+        },
+        {
+          "kind": "paragraph",
+          "text": "A production rule pairs an IF condition with a THEN action. Working memory holds the current facts. When a condition matches those facts, the rule can be applied and working memory may change."
+        },
+        {
+          "kind": "paragraph",
+          "text": "A control system chooses which applicable rule to use and when to stop. A rule applier carries out that choice. When several rules match, the system needs a conflict-resolution strategy."
+        },
+        {
+          "kind": "heading",
+          "text": "Choose among matching rules"
+        },
+        {
+          "kind": "paragraph",
+          "text": "A system might prefer a more specific rule, a rule based on recent facts, or the first rule in an ordered list. Refraction prevents a fired rule from repeating until its matching facts change."
+        },
+        {
+          "kind": "paragraph",
+          "text": "Rules are modular and can be edited independently. As a rule set grows, however, overlapping rules and hard-to-follow control flow require careful review."
+        }
+      ]
+    },
+    {
+      "id": "lesson_06",
+      "title": "Judge the method",
+      "estimated_minutes": 4,
+      "blocks": [
+        {
+          "kind": "heading",
+          "text": "Ask four performance questions"
+        },
+        {
+          "kind": "paragraph",
+          "text": "Completeness asks whether a method can find a solution when one exists. Cost optimality asks whether it can find a least-cost solution. Time complexity concerns the work needed; space complexity concerns memory."
+        },
+        {
+          "kind": "heading",
+          "text": "Describe search size"
+        },
+        {
+          "kind": "paragraph",
+          "text": "Branching factor is the number of next states a step may create. Solution depth counts the actions in an optimal path, while maximum path length describes how long any explored path could become."
+        },
+        {
+          "kind": "paragraph",
+          "text": "These measures help compare methods for the same problem. A method that works well for a small state space may become too slow or memory-hungry for a larger one."
+        }
+      ]
+    }
+  ],
+  "quiz": {
+    "title": "Quick check",
+    "hash_algo": "SHA256",
+    "normalization": "lowercase|trim|strip_punctuation",
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multiple_choice",
+        "prompt": "Which term names the set of situations an agent could occupy?",
+        "options": [
+          "State space",
+          "Initial state",
+          "Action cost",
+          "Goal test"
+        ],
+        "salt": "c3a3a990b9c366bddd38a1d2",
+        "answer_hash": "1e8c60236f4ed097c2ea3139c449fe34b3639df99dc8b6d71297d93ddba37543",
+        "points": 1
+      },
+      {
+        "id": "q2",
+        "kind": "multiple_choice",
+        "prompt": "Which property describes a step that can be undone?",
+        "options": [
+          "Recoverable",
+          "Irrecoverable",
+          "Standardized",
+          "Heuristic"
+        ],
+        "salt": "adfca5d29d908f15416425a3",
+        "answer_hash": "874358c8e4ab483987a69e5d92b7afcf42943f041ff328c7592864daeec500a0",
+        "points": 1
+      },
+      {
+        "id": "q3",
+        "kind": "multiple_choice",
+        "prompt": "Which search begins at the initial state and explores actions toward a goal?",
+        "options": [
+          "Backward search",
+          "Forward search",
+          "Problem reduction",
+          "Rule refraction"
+        ],
+        "salt": "befa5f8841cc255a0c9b38d2",
+        "answer_hash": "068d0f9a4b8e2a9f1a29a56d1ccbfa4852e4e8adb721eaa4a767ff6a71a97eab",
+        "points": 1
+      },
+      {
+        "id": "q4",
+        "kind": "multiple_choice",
+        "prompt": "In an AND relationship, what is required?",
+        "options": [
+          "One alternative succeeds",
+          "All required subproblems succeed",
+          "The first rule fires",
+          "The cheapest action is skipped"
+        ],
+        "salt": "ac07cc9c1827ffd969dfa3bf",
+        "answer_hash": "6fd7876983695b41b6b0937be621e1dd65f3452ae6ce7f0f2220eea1b92976fb",
+        "points": 1
+      },
+      {
+        "id": "q5",
+        "kind": "multiple_choice",
+        "prompt": "What does a production rule pair?",
+        "options": [
+          "A condition and an action",
+          "Two goal states",
+          "A path and its depth",
+          "Time and memory"
+        ],
+        "salt": "f15c2d4470ef7b11afecdb00",
+        "answer_hash": "08b74491ad67027e6a00286c1c9512e393de179962e5f441556f2461e6b38bbd",
+        "points": 1
+      },
+      {
+        "id": "q6",
+        "kind": "multiple_choice",
+        "prompt": "Which measure asks whether a solution will be found when one exists?",
+        "options": [
+          "Space complexity",
+          "Cost optimality",
+          "Completeness",
+          "Branching factor"
+        ],
+        "salt": "40e35d36e2b4e77d5282a756",
+        "answer_hash": "07054147b3e619f048d3917d12c2b01a3340649f938de1c8a8ea41afb591d417",
+        "points": 1
+      }
+    ]
+  }
+}

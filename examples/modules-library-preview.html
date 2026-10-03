@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acassist modules library preview</title>
+  <style>
+    :root { color-scheme:dark; --ink:#070B2E; --text:#F4F5FF; --muted:#A9AED6; --azure:#7CCBFF; --glass:rgba(255,255,255,.08); --solid:#1B2260; --border:rgba(255,255,255,.18); font:17px/1.5 Lexend,ui-sans-serif,system-ui,sans-serif; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--text); background:radial-gradient(55% 50% at 12% 10%,rgba(124,34,240,.38),transparent 72%),radial-gradient(50% 45% at 90% 90%,rgba(27,140,255,.25),transparent 72%),var(--ink); }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; }
+    :focus-visible { outline:3px solid var(--azure); outline-offset:3px; }
+    .topbar { border-bottom:1px solid rgba(255,255,255,.09); }
+    .topbar-inner { max-width:72rem; min-height:76px; margin:auto; padding:1rem 1.5rem; display:flex; align-items:center; justify-content:space-between; gap:1.2rem; flex-wrap:wrap; }
+    .brand { font-size:1.25rem; font-weight:700; letter-spacing:-.02em; }
+    .brand-mark { display:inline-block; width:1.15rem; height:1.15rem; margin-right:.55rem; border:3px solid var(--azure); border-radius:.35rem; transform:rotate(-15deg); vertical-align:-.13rem; }
+    .nav { display:flex; gap:1.5rem; }
+    .nav a { min-height:44px; display:inline-flex; align-items:center; color:var(--muted); text-decoration:none; }
+    .nav a[aria-current="page"] { color:var(--text); font-weight:600; border-bottom:2px solid var(--azure); }
+    .status { color:var(--azure); font-size:.9rem; }
+    .status::before { content:""; display:inline-block; width:.55rem; height:.55rem; margin-right:.45rem; border-radius:50%; background:#3DDC97; }
+    main { max-width:72rem; padding:3rem 1.5rem 5rem; margin:0 auto; }
+    h1 { margin:0 0 .6rem; font-size:clamp(2rem,3vw,2.45rem); line-height:1.15; letter-spacing:-.02em; }
+    .lede { color:var(--muted); margin:0 0 1.8rem; max-width:60ch; }
+    .toolbar { display:grid; grid-template-columns:minmax(12rem,1fr) 13rem 12rem; gap:.75rem; align-items:end; margin-bottom:1.2rem; }
+    .field { display:grid; gap:.45rem; color:var(--muted); font-size:.85rem; font-weight:500; }
+    .field input,.field select { width:100%; min-height:48px; padding:.7rem 1rem; color:var(--text); border:1px solid rgba(255,255,255,.35); border-radius:14px; background:#121A5A; }
+    .count { margin:0 0 1.15rem; color:var(--muted); font-size:.9rem; }
+    .demo-banner { padding:.9rem 1.15rem; margin:0 0 1.5rem; border:1px solid rgba(124,203,255,.4); border-radius:14px; background:rgba(124,203,255,.08); color:#D9EFFF; font-size:.86rem; }
+    .grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+    .card { position:relative; display:flex; flex-direction:column; min-height:16rem; padding:1.4rem; border:1px solid var(--border); border-radius:22px; background:var(--glass); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); box-shadow:0 8px 24px rgba(2,4,24,.28); }
+    .card.featured { border-color:rgba(124,203,255,.6); background:rgba(255,255,255,.11); }
+    .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+    .subject { color:var(--azure); font-size:.82rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+    .ready { white-space:nowrap; color:#9EEBC7; font-size:.75rem; }
+    .ready::before { content:""; display:inline-block; width:.42rem; height:.42rem; margin-right:.3rem; border-radius:50%; background:#3DDC97; vertical-align:.12rem; }
+    .sample { color:var(--muted); font-size:.75rem; white-space:nowrap; }
+    .card h2 { margin:1.05rem 0 .4rem; font-size:1.2rem; line-height:1.25; }
+    .level { color:var(--muted); font-size:.88rem; margin:0; }
+    .details { margin:1.1rem 0 1.2rem; color:var(--muted); font-size:.82rem; }
+    .card button { align-self:flex-start; min-height:44px; margin-top:auto; padding:.55rem 1.1rem; border-radius:14px; border:1px solid rgba(255,255,255,.4); color:var(--text); background:rgba(255,255,255,.08); font-weight:600; }
+    .card.featured button { border:0; background:linear-gradient(100deg,#8B2EFF,#3A4BFF); }
+    .empty { padding:2rem; border:1px solid var(--border); border-radius:20px; background:var(--glass); color:var(--muted); }
+    .empty button { margin-left:.4rem; min-height:44px; padding:.4rem .8rem; border:1px solid rgba(255,255,255,.4); border-radius:12px; background:rgba(255,255,255,.08); color:var(--text); }
+    dialog { max-width:30rem; border:1px solid var(--border); border-radius:22px; padding:1.8rem; background:#1B2260; color:var(--text); box-shadow:0 24px 60px rgba(2,4,24,.6); }
+    dialog::backdrop { background:rgba(2,4,24,.65); }
+    dialog h2 { margin:0 0 .6rem; } dialog p { color:var(--muted); }
+    dialog button { min-height:44px; margin-top:1.5rem; padding:.55rem 1.1rem; border:1px solid rgba(255,255,255,.4); border-radius:14px; background:rgba(255,255,255,.08); color:var(--text); }
+    .demo-note { margin:2rem 0 0; color:var(--muted); font-size:.82rem; }
+    @media (max-width:960px) { .grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:640px) { main { padding-top:2rem; } .toolbar { grid-template-columns:1fr; } .grid { grid-template-columns:1fr; } .nav { order:3; width:100%; justify-content:space-between; } .status { font-size:.78rem; } }
+    @media (prefers-reduced-transparency:reduce) { .card,.empty { background:var(--solid); backdrop-filter:none; -webkit-backdrop-filter:none; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Acassist</div>
+    <nav class="nav" aria-label="Preview navigation"><a href="modules-library-preview.html" aria-current="page">Modules</a><a href="full-module-preview.html">Full module example</a></nav>
+    <span class="status">Saved modules ready offline</span>
+  </div></header>
+  <main>
+    <h1>Your modules</h1>
+    <p class="lede">Find a lesson or quiz saved on this device. Search by title or subject, or narrow the list below.</p>
+    <p class="demo-banner">Library layout demo · 1 complete module and 11 sample cards. Only the first module opens a lesson.</p>
+    <div class="toolbar">
+      <label class="field">Search modules<input id="search" type="search" placeholder="Try science or fractions" autocomplete="off"></label>
+      <label class="field">Subject<select id="subject"><option value="">All subjects</option></select></label>
+      <label class="field">Sort by<select id="sort"><option value="featured">Ready to open</option><option value="title">Title A–Z</option><option value="subject">Subject</option><option value="lessons">Most lessons</option></select></label>
+    </div>
+    <p class="count" id="count" role="status"></p>
+    <div class="grid" id="grid"></div>
+    <p class="empty" id="empty" hidden>No modules match. <button id="clear-filters" type="button">Clear filters</button></p>
+  </main>
+  <dialog id="details" aria-labelledby="detail-title"><h2 id="detail-title"></h2><p id="detail-copy"></p><p>This catalog item illustrates the library layout. Its lesson content is not included in this preview.</p><button id="close-details" type="button">Close</button></dialog>
+  <script id="catalog-json" type="application/json">{"demo_data":true,"description":"Illustrative module-library metadata; only the first item has full content in this repository.","modules":[{"id":"catalog_01","title":"Problem Representation in AI","subject":"Artificial Intelligence","level":"Tertiary","lesson_count":6,"question_count":6,"estimated_minutes":24,"available_offline":true,"preview_file":"full-module-preview.html"},{"id":"catalog_02","title":"Photosynthesis Basics","subject":"Science","level":"Elementary","lesson_count":4,"question_count":5,"estimated_minutes":16,"available_offline":false},{"id":"catalog_03","title":"Fractions: Halves and Quarters","subject":"Mathematics","level":"Grade 3","lesson_count":3,"question_count":5,"estimated_minutes":14,"available_offline":false},{"id":"catalog_04","title":"The Water Cycle","subject":"Science","level":"Elementary","lesson_count":4,"question_count":4,"estimated_minutes":18,"available_offline":false},{"id":"catalog_05","title":"Sentence Building","subject":"English","level":"Grade 4","lesson_count":3,"question_count":5,"estimated_minutes":15,"available_offline":false},{"id":"catalog_06","title":"Mga Bahagi ng Pananalita","subject":"Filipino","level":"Grade 5","lesson_count":4,"question_count":5,"estimated_minutes":17,"available_offline":false},{"id":"catalog_07","title":"Philippine Landforms","subject":"Araling Panlipunan","level":"Grade 6","lesson_count":3,"question_count":5,"estimated_minutes":16,"available_offline":false},{"id":"catalog_08","title":"Ratios and Proportions","subject":"Mathematics","level":"Junior High","lesson_count":5,"question_count":6,"estimated_minutes":22,"available_offline":false},{"id":"catalog_09","title":"Ecosystems and Food Webs","subject":"Science","level":"Junior High","lesson_count":4,"question_count":5,"estimated_minutes":19,"available_offline":false},{"id":"catalog_10","title":"Introduction to Functions","subject":"Mathematics","level":"Senior High","lesson_count":5,"question_count":6,"estimated_minutes":25,"available_offline":false},{"id":"catalog_11","title":"Media and Information Literacy","subject":"English","level":"Senior High","lesson_count":4,"question_count":5,"estimated_minutes":20,"available_offline":false},{"id":"catalog_12","title":"Community Health Basics","subject":"MAPEH","level":"Junior High","lesson_count":3,"question_count":4,"estimated_minutes":15,"available_offline":false}]}</script>
+  <script>
+    const $=id=>document.getElementById(id);
+    const catalog=JSON.parse($('catalog-json').textContent).modules;
+    const subjects=[...new Set(catalog.map(m=>m.subject))].sort((a,b)=>a.localeCompare(b));
+    subjects.forEach(subject=>{ const option=document.createElement('option'); option.value=subject; option.textContent=subject; $('subject').append(option); });
+    function render() {
+      const query=$('search').value.trim().toLowerCase(), subject=$('subject').value, sort=$('sort').value;
+      const items=catalog.filter(m=>(!subject||m.subject===subject)&&(!query||`${m.title} ${m.subject}`.toLowerCase().includes(query)));
+      items.sort((a,b)=>sort==='featured'?Number(Boolean(b.preview_file))-Number(Boolean(a.preview_file))||a.title.localeCompare(b.title):sort==='lessons'?b.lesson_count-a.lesson_count||a.title.localeCompare(b.title):sort==='subject'?a.subject.localeCompare(b.subject)||a.title.localeCompare(b.title):a.title.localeCompare(b.title));
+      $('count').textContent=`${items.length} of ${catalog.length} modules`;
+      $('empty').hidden=items.length>0;
+      $('grid').replaceChildren();
+      items.forEach(m=>{
+        const card=document.createElement('article'), top=document.createElement('div'), category=document.createElement('span'), ready=document.createElement('span'), title=document.createElement('h2'), level=document.createElement('p'), details=document.createElement('p'), button=document.createElement('button');
+        card.className='card'+(m.preview_file?' featured':''); top.className='card-top'; category.className='subject'; ready.className=m.available_offline?'ready':'sample'; level.className='level'; details.className='details';
+        category.textContent=m.subject; ready.textContent=m.available_offline?'Ready offline':'Sample card'; top.append(category,ready);
+        title.textContent=m.title; level.textContent=m.level;
+        details.textContent=`${m.lesson_count} lessons · ${m.question_count} questions · about ${m.estimated_minutes} min`;
+        button.type='button'; button.textContent=m.preview_file?'Open module':'View details';
+        button.addEventListener('click',()=>{
+          if (m.preview_file) { window.location.href=m.preview_file; return; }
+          $('detail-title').textContent=m.title;
+          $('detail-copy').textContent=`${m.subject} · ${m.level} · ${m.lesson_count} lessons · ${m.question_count} questions`;
+          $('details').showModal();
+        });
+        card.append(top,title,level,details,button); $('grid').append(card);
+      });
+    }
+    $('search').addEventListener('input',render);
+    $('subject').addEventListener('change',render);
+    $('sort').addEventListener('change',render);
+    $('clear-filters').addEventListener('click',()=>{ $('search').value=''; $('subject').value=''; $('sort').value='featured'; render(); $('search').focus(); });
+    $('close-details').addEventListener('click',()=>$('details').close());
+    render();
+  </script>
+</body>
+</html>

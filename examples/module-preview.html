@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Acassist module preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #070B2E;
+      --text: #F4F5FF;
+      --muted: #A9AED6;
+      --azure: #7CCBFF;
+      --border: rgba(255,255,255,.18);
+      --glass: rgba(255,255,255,.08);
+      --glass-strong: rgba(255,255,255,.12);
+      --solid: #1B2260;
+      --solid-strong: #232B6E;
+      --gradient: linear-gradient(100deg,#8B2EFF,#3A4BFF);
+      font: 17px/1.55 Lexend, ui-sans-serif, system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      min-height: 100vh; margin: 0; color: var(--text);
+      background: radial-gradient(60% 50% at 15% 15%,rgba(124,34,240,.36),transparent 72%),
+        radial-gradient(50% 45% at 88% 90%,rgba(27,140,255,.24),transparent 72%),var(--ink);
+    }
+    button { font: inherit; cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    :focus-visible { outline: 3px solid var(--azure); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .topbar { min-height: 78px; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .topbar-inner { max-width: 72rem; margin: auto; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; flex-wrap: wrap; }
+    .brand { color: var(--text); font-size: 1.25rem; font-weight: 700; letter-spacing: -.02em; }
+    .brand-mark { display: inline-block; width: 1rem; height: 1rem; margin-right: .55rem; border: 3px solid var(--azure); border-radius: .35rem; transform: rotate(-15deg); vertical-align: -.08rem; }
+    .topnav { display: flex; align-items: center; gap: 1.75rem; }
+    .topnav span { color: var(--muted); }
+    .topnav .active { color: var(--text); font-weight: 600; border-bottom: 2px solid var(--azure); padding: .35rem 0; }
+    .status { color: var(--azure); font-size: .88rem; }
+    .status::before { content: ""; display: inline-block; width: .55rem; height: .55rem; background: #3DDC97; border-radius: 50%; margin-right: .45rem; }
+    main { max-width: 56rem; margin: 0 auto; padding: 3.5rem 1.5rem 5rem; }
+    .crumb { color: var(--muted); font-size: .9rem; margin-bottom: 1.25rem; }
+    .glass { position: relative; isolation: isolate; background: var(--glass); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%); border-radius: 28px; box-shadow: 0 8px 24px rgba(2,4,24,.45); }
+    .glass::before { content: ""; position: absolute; inset: 0; padding: 1px; border-radius: inherit; background: linear-gradient(155deg,#C84BDD,transparent 40%,transparent 60%,#1B8CFF); -webkit-mask: linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+    .module { padding: 0; }
+    .content-panel { padding: 2.25rem 2.5rem; }
+    #quiz-panel { max-width: 44rem; margin: 0 auto; }
+    .eyebrow { color: var(--azure); font-size: .86rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { font-size: clamp(2rem,3vw,2.55rem); line-height: 1.15; letter-spacing: -.025em; margin: .7rem 0 .8rem; }
+    .metadata { color: var(--muted); font-size: .9rem; margin: 0 0 1.75rem; }
+    .metadata strong { color: var(--text); font-weight: 500; }
+    .tabs { display: flex; gap: .4rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+    .tab { min-height: 48px; color: var(--muted); border: 0; border-bottom: 2px solid transparent; background: transparent; padding: .6rem 1.1rem; }
+    .tab[aria-selected="true"] { color: var(--text); font-weight: 600; border-color: var(--azure); }
+    .lesson { max-width: 62ch; }
+    .lesson h2 { margin: 1.8rem 0 .65rem; font-size: 1.45rem; line-height: 1.2; }
+    .lesson h2:first-child { margin-top: 0; }
+    .lesson p { margin: 0 0 1rem; color: var(--text); line-height: 1.75; }
+    .lesson p + h2 { margin-top: 2.2rem; }
+    .actions { display: flex; justify-content: flex-end; gap: .75rem; flex-wrap: wrap; margin-top: 2rem; }
+    #lesson-panel .actions .button { width: 100%; }
+    .button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 20px; padding: .65rem 1.35rem; color: var(--text); border: 0; font-weight: 600; background: var(--gradient); box-shadow: 0 8px 28px rgba(139,46,255,.3); }
+    .button.secondary { color: var(--text); background: rgba(255,255,255,.08); box-shadow: inset 0 0 0 1px rgba(255,255,255,.42); }
+    .progress-copy { color: var(--muted); font-size: .9rem; margin-bottom: .55rem; }
+    .progress { height: .6rem; border-radius: 99px; background: rgba(255,255,255,.14); overflow: hidden; }
+    .progress > span { display: block; height: 100%; border-radius: inherit; background: var(--gradient); }
+    .prompt { font-size: 1.55rem; line-height: 1.25; margin: 2rem 0 1.5rem; }
+    .choices { display: grid; gap: .7rem; }
+    .choice { display: flex; align-items: center; gap: 1rem; min-height: 58px; padding: .8rem 1.1rem; border-radius: 20px; border: 1px solid rgba(255,255,255,.42); background: var(--glass); }
+    .choice:has(input:checked) { background: rgba(61,177,255,.18); border-color: var(--azure); }
+    .choice input { appearance: none; flex: none; width: 1.25rem; height: 1.25rem; border: 2px solid #A9AED6; border-radius: 50%; margin: 0; }
+    .choice input:checked { border: 6px solid var(--azure); background: #243D6F; }
+    .choice input:focus-visible { outline-offset: 5px; }
+    .short-answer { display: grid; gap: .55rem; font-weight: 500; }
+    .short-answer input { min-height: 52px; width: 100%; padding: .7rem 1rem; border: 1px solid rgba(255,255,255,.42); border-radius: 14px; background: rgba(4,7,32,.45); color: var(--text); font: inherit; }
+    .hint { color: var(--muted); font-size: .88rem; margin-top: 1.2rem; }
+    .import-row { display: flex; justify-content: flex-end; margin-top: 1rem; }
+    .import { color: var(--muted); background: none; border: 0; text-decoration: underline; min-height: 44px; padding: .3rem; font-size: .88rem; }
+    .error { color: #FFB8C7; margin-top: 1rem; }
+    @media (max-width: 640px) { main { padding-top: 2rem; } .content-panel { padding: 1.5rem; } .topnav { order: 3; width: 100%; justify-content: space-between; } .status { font-size: .78rem; } }
+    @media (prefers-reduced-transparency: reduce) { .glass { backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--solid); } .choice { background: var(--solid-strong); } }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>Acassist</div>
+    <nav class="topnav" aria-label="Main navigation"><span>Home</span><span class="active">Modules</span><span>Quizzes</span></nav>
+    <span class="status">Module available offline</span>
+  </div></header>
+  <main>
+    <div class="crumb" id="crumb">Modules /</div>
+    <section class="module" aria-labelledby="module-title">
+      <div class="eyebrow">Learning module</div>
+      <h1 id="module-title"></h1>
+      <p class="metadata" id="metadata"></p>
+      <div class="tabs" role="tablist" aria-label="Module content">
+        <button id="lesson-tab" class="tab" type="button" role="tab" aria-controls="lesson-panel" aria-selected="true">Lesson</button>
+        <button id="quiz-tab" class="tab" type="button" role="tab" aria-controls="quiz-panel" aria-selected="false">Quiz</button>
+      </div>
+      <div id="lesson-panel" class="glass content-panel" role="tabpanel" aria-labelledby="lesson-tab">
+        <article class="lesson" id="lesson"></article>
+        <div class="actions"><button id="start-quiz" class="button" type="button">Start quiz</button></div>
+      </div>
+      <div id="quiz-panel" class="glass content-panel" role="tabpanel" aria-labelledby="quiz-tab" hidden>
+        <div class="progress-copy" id="question-count"></div>
+        <div class="progress" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="1" aria-valuenow="1"><span></span></div>
+        <h2 class="prompt" id="prompt"></h2>
+        <div class="choices" id="choices"></div>
+        <p class="hint">This content preview shows questions. Grading happens in the Acassist app.</p>
+        <div class="actions"><button id="previous" class="button secondary" type="button">Previous</button><button id="next" class="button" type="button">Next question</button></div>
+      </div>
+    </section>
+    <div class="import-row"><button id="open-file" class="import" type="button">Preview another module JSON</button><input id="file" type="file" accept=".json,application/json" hidden></div>
+    <p id="error" class="error" role="alert" hidden></p>
+  </main>
+  <script id="module-json" type="application/json">{"schema_version":"1.0","module":{"id":"mod_problem_representation_ai_01","type":"quiz","title":"Problem Representation in AI","grade_level":"tertiary"},"lesson":{"blocks":[{"kind":"heading","text":"A problem as states"},{"kind":"paragraph","text":"An AI search problem identifies the situations an agent can occupy, where it begins, and which states count as success."},{"kind":"paragraph","text":"Actions move the agent between states. A transition model describes how an action changes the current state."},{"kind":"heading","text":"Picture a route"},{"kind":"paragraph","text":"Imagine finding a way from a library to a classroom. Your current location is a state; the library is the initial state, the classroom is a goal state, and each allowed move is an action."}]},"quiz":{"hash_algo":"SHA256","normalization":"lowercase|trim|strip_punctuation","questions":[{"id":"q1","kind":"multiple_choice","prompt":"Which part of a search problem tells us where the agent begins?","options":["Initial state","Goal state","Transition model","Action cost"],"salt":"818f6d91b0db8005076d39ad","answer_hash":"f7e3e1779fd2c3300ddbec9fa5fcb71dc0620eec727b99f5590fe79e4a87a946","points":1},{"id":"q2","kind":"multiple_choice","prompt":"What describes how an action changes the current state?","options":["Goal state","State space","Transition model","Initial state"],"salt":"2d021f4ca47332fb571d14a1","answer_hash":"50623c660908199dd8362b53e9945d926fa311e589152103e54a094027da4aa9","points":1}]}}</script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let moduleData, index = 0, answers = [];
+    function validate(data) {
+      if (data?.schema_version !== '1.0' || typeof data.module?.title !== 'string') throw new Error('Expected an Acassist v1.0 module with a title.');
+      if (data.module.grade_level != null && typeof data.module.grade_level !== 'string') throw new Error('The grade level must be text.');
+      if (data.lesson && !Array.isArray(data.lesson.blocks)) throw new Error('Lesson blocks must be a list.');
+      if (data.quiz && !Array.isArray(data.quiz.questions)) throw new Error('Quiz questions must be a list.');
+      if (!data.lesson?.blocks?.length && !data.quiz?.questions?.length) throw new Error('The module needs lesson blocks or quiz questions.');
+      if (data.lesson?.blocks && !data.lesson.blocks.every(b => ['heading','paragraph'].includes(b.kind) && typeof b.text === 'string')) throw new Error('A lesson block is invalid.');
+      if (data.quiz?.questions && !data.quiz.questions.every(q =>
+        typeof q.id === 'string' && typeof q.prompt === 'string' &&
+        ['multiple_choice','true_false','identification'].includes(q.kind) &&
+        (q.kind !== 'multiple_choice' || (Array.isArray(q.options) && q.options.every(o => typeof o === 'string')))
+      )) throw new Error('A quiz question is invalid.');
+      return data;
+    }
+    function show(which) {
+      const lesson = which === 'lesson';
+      $('lesson-panel').hidden = !lesson;
+      $('quiz-panel').hidden = lesson;
+      $('lesson-tab').setAttribute('aria-selected', String(lesson));
+      $('quiz-tab').setAttribute('aria-selected', String(!lesson));
+      $('lesson-tab').tabIndex = lesson ? 0 : -1;
+      $('quiz-tab').tabIndex = lesson ? -1 : 0;
+    }
+    function renderQuestion() {
+      const questions = moduleData.quiz.questions;
+      const q = questions[index];
+      $('question-count').textContent = `Question ${index + 1} of ${questions.length}`;
+      $('progress').setAttribute('aria-valuemax', String(questions.length));
+      $('progress').setAttribute('aria-valuenow', String(index + 1));
+      $('progress').setAttribute('aria-label', `Question ${index + 1} of ${questions.length}`);
+      $('progress').firstElementChild.style.width = `${(index + 1) / questions.length * 100}%`;
+      $('prompt').textContent = q.prompt;
+      $('choices').replaceChildren();
+      if (q.kind === 'identification') {
+        const label = document.createElement('label'); label.className = 'short-answer'; label.textContent = 'Your answer';
+        const input = document.createElement('input'); input.type = 'text'; input.value = answers[index] || '';
+        input.addEventListener('input', () => { answers[index] = input.value; });
+        label.append(input); $('choices').append(label);
+      } else {
+        const options = q.kind === 'true_false' ? ['True', 'False'] : q.options;
+        options.forEach((option) => {
+          const label = document.createElement('label'); label.className = 'choice';
+          const input = document.createElement('input'); input.type = 'radio'; input.name = q.id; input.value = option;
+          input.checked = answers[index] === option;
+          input.addEventListener('change', () => { answers[index] = option; });
+          const span = document.createElement('span'); span.textContent = option;
+          label.append(input, span); $('choices').append(label);
+        });
+      }
+      $('previous').disabled = index === 0;
+      $('next').textContent = index === questions.length - 1 ? 'Back to lesson' : 'Next question';
+    }
+    function render(data) {
+      moduleData = validate(data); index = 0; answers = [];
+      $('error').hidden = true;
+      $('module-title').textContent = data.module.title;
+      $('crumb').textContent = `Modules / ${data.module.title}`;
+      const count = data.quiz?.questions?.length || 0;
+      const level = data.module.grade_level || 'Learning';
+      $('metadata').textContent = `${level.charAt(0).toUpperCase() + level.slice(1)} · ${count} ${count === 1 ? 'question' : 'questions'}`;
+      const blocks = data.lesson?.blocks || [];
+      $('lesson').replaceChildren();
+      blocks.forEach((block) => {
+        const node = document.createElement(block.kind === 'heading' ? 'h2' : 'p');
+        node.textContent = block.text;
+        $('lesson').append(node);
+      });
+      $('lesson-tab').hidden = !blocks.length;
+      $('lesson-panel').hidden = !blocks.length;
+      $('quiz-tab').hidden = !count;
+      $('start-quiz').hidden = !count;
+      if (count) renderQuestion();
+      show(blocks.length ? 'lesson' : 'quiz');
+    }
+    $('lesson-tab').addEventListener('click', () => show('lesson'));
+    $('quiz-tab').addEventListener('click', () => show('quiz'));
+    document.querySelector('.tabs').addEventListener('keydown', (event) => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      event.preventDefault();
+      const other = $('lesson-tab').getAttribute('aria-selected') === 'true' ? $('quiz-tab') : $('lesson-tab');
+      if (!other.hidden) { other.click(); other.focus(); }
+    });
+    $('start-quiz').addEventListener('click', () => show('quiz'));
+    $('previous').addEventListener('click', () => { if (index > 0) { index--; renderQuestion(); } });
+    $('next').addEventListener('click', () => { if (index < moduleData.quiz.questions.length - 1) { index++; renderQuestion(); } else show('lesson'); });
+    $('open-file').addEventListener('click', () => $('file').click());
+    $('file').addEventListener('change', async (event) => {
+      const file = event.target.files?.[0]; if (!file) return;
+      try { render(JSON.parse(await file.text())); }
+      catch (error) { $('error').textContent = error.message; $('error').hidden = false; }
+      event.target.value = '';
+    });
+    render(JSON.parse($('module-json').textContent));
+  </script>
+</body>
+</html>

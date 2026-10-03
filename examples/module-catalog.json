@@ -1,0 +1,127 @@
+{
+  "demo_data": true,
+  "description": "Illustrative module-library metadata; only the first item has full content in this repository.",
+  "modules": [
+    {
+      "id": "catalog_01",
+      "title": "Problem Representation in AI",
+      "subject": "Artificial Intelligence",
+      "level": "Tertiary",
+      "lesson_count": 6,
+      "question_count": 6,
+      "estimated_minutes": 24,
+      "available_offline": true,
+      "preview_file": "full-module-preview.html"
+    },
+    {
+      "id": "catalog_02",
+      "title": "Photosynthesis Basics",
+      "subject": "Science",
+      "level": "Elementary",
+      "lesson_count": 4,
+      "question_count": 5,
+      "estimated_minutes": 16,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_03",
+      "title": "Fractions: Halves and Quarters",
+      "subject": "Mathematics",
+      "level": "Grade 3",
+      "lesson_count": 3,
+      "question_count": 5,
+      "estimated_minutes": 14,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_04",
+      "title": "The Water Cycle",
+      "subject": "Science",
+      "level": "Elementary",
+      "lesson_count": 4,
+      "question_count": 4,
+      "estimated_minutes": 18,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_05",
+      "title": "Sentence Building",
+      "subject": "English",
+      "level": "Grade 4",
+      "lesson_count": 3,
+      "question_count": 5,
+      "estimated_minutes": 15,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_06",
+      "title": "Mga Bahagi ng Pananalita",
+      "subject": "Filipino",
+      "level": "Grade 5",
+      "lesson_count": 4,
+      "question_count": 5,
+      "estimated_minutes": 17,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_07",
+      "title": "Philippine Landforms",
+      "subject": "Araling Panlipunan",
+      "level": "Grade 6",
+      "lesson_count": 3,
+      "question_count": 5,
+      "estimated_minutes": 16,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_08",
+      "title": "Ratios and Proportions",
+      "subject": "Mathematics",
+      "level": "Junior High",
+      "lesson_count": 5,
+      "question_count": 6,
+      "estimated_minutes": 22,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_09",
+      "title": "Ecosystems and Food Webs",
+      "subject": "Science",
+      "level": "Junior High",
+      "lesson_count": 4,
+      "question_count": 5,
+      "estimated_minutes": 19,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_10",
+      "title": "Introduction to Functions",
+      "subject": "Mathematics",
+      "level": "Senior High",
+      "lesson_count": 5,
+      "question_count": 6,
+      "estimated_minutes": 25,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_11",
+      "title": "Media and Information Literacy",
+      "subject": "English",
+      "level": "Senior High",
+      "lesson_count": 4,
+      "question_count": 5,
+      "estimated_minutes": 20,
+      "available_offline": false
+    },
+    {
+      "id": "catalog_12",
+      "title": "Community Health Basics",
+      "subject": "MAPEH",
+      "level": "Junior High",
+      "lesson_count": 3,
+      "question_count": 4,
+      "estimated_minutes": 15,
+      "available_offline": false
+    }
+  ]
+}
