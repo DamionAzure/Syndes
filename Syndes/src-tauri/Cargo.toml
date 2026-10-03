@@ -28,6 +28,9 @@ hex = "0.4"
 subtle = "2.5"
 unicode-normalization = "0.1"
 regex = "1"
+# CSPRNG for per-question salts at seal time (spec 03/04). getrandom draws from the
+# OS entropy source directly - no seeding, no state to get wrong.
+getrandom = "0.3"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
