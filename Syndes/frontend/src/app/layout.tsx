@@ -1,19 +1,38 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
+import { AppShell } from "@/components/layout/app-shell";
+import { preferenceScript } from "@/features/settings/preference-script";
 import "@/styles/globals.css";
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const lexend = localFont({
+  src: "./fonts/lexend-latin-wght.woff2",
+  weight: "100 900",
+  variable: "--font-lexend",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Syndes",
+  title: { default: "Syndes", template: "%s · Syndes" },
   icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
-      <body>{children}</body>
+    // The pre-paint script rewrites data-theme and data-controls, so React
+    // must not treat those two attributes as a hydration mismatch.
+    <html
+      lang="en"
+      data-theme="light"
+      data-controls="default"
+      className={lexend.variable}
+      suppressHydrationWarning
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: preferenceScript }} />
+      </head>
+      <body>
+        <AppShell>{children}</AppShell>
+      </body>
     </html>
   );
 }
