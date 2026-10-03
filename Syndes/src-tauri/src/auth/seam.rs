@@ -72,10 +72,9 @@ pub fn store_session_online(
 fn validate_token_contract(access_token: &str) -> Result<(), AuthError> {
     use base64::Engine;
 
-    let payload_b64 = access_token
-        .split('.')
-        .nth(1)
-        .ok_or_else(|| AuthError::MalformedToken("token is not in header.payload.sig form".to_string()))?;
+    let payload_b64 = access_token.split('.').nth(1).ok_or_else(|| {
+        AuthError::MalformedToken("token is not in header.payload.sig form".to_string())
+    })?;
 
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(payload_b64)

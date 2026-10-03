@@ -1,5 +1,7 @@
 import { use } from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import { fixtureQuizScorer } from "./fixture-quiz-scorer";
+import { tauriQuizScorer } from "./tauri-quiz-scorer";
 
 export type QuestionStatus = "correct" | "incorrect" | "unanswered";
 
@@ -14,8 +16,12 @@ export interface QuizScorer {
   score(moduleId: string, answers: Record<string, string>): Promise<ScoreResult>;
 }
 
-/** The one place the active scorer is chosen; the Tauri bridge replaces it here. */
-const activeScorer: QuizScorer = fixtureQuizScorer;
+/**
+ * The one place the active scorer is chosen. Inside Tauri the verdict comes from
+ * the Rust core (tauriQuizScorer); in a plain browser the fixtureQuizScorer is
+ * the only safe fallback and never scores real modules.
+ */
+const activeScorer: QuizScorer = isTauri() ? tauriQuizScorer : fixtureQuizScorer;
 
 export function useQuizScorer(): QuizScorer {
   return activeScorer;

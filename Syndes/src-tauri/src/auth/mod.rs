@@ -203,9 +203,9 @@ impl AuthState {
 /// ONLY the in-token role returned by `verify_jwt`, never `session.role`. A
 /// missing row is `NoCachedSession` — the first cause in the fixed order.
 pub(crate) fn verify_cached_role(store: &SessionStore) -> Result<VerifiedClaims, AuthError> {
-    let session = store
-        .load_cached_session()?
-        .ok_or_else(|| AuthError::NoCachedSession("no cached session on this device".to_string()))?;
+    let session = store.load_cached_session()?.ok_or_else(|| {
+        AuthError::NoCachedSession("no cached session on this device".to_string())
+    })?;
     // The loose `session.role` is deliberately IGNORED here; the role is read
     // only from the verified token inside verify_jwt.
     verify::verify_jwt(&session.access_token, &session.jwks_cache)
@@ -294,7 +294,10 @@ mod orchestrator_tests {
         // Token/jwks that cannot verify offline (garbage), so Layer 2 fails and we
         // drop to the gate, which is scripted to confirm Teacher.
         let store = store_with_row("admin", "not.a.jwt", "{\"keys\":[]}");
-        let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Confirmed(Role::Teacher))));
+        let state = AuthState::new(
+            store,
+            Box::new(ScriptGate(GateOutcome::Confirmed(Role::Teacher))),
+        );
         let ctx = resolve_access(&state, true);
         assert_eq!(ctx.source, AuthSource::OnlineGate);
         // The gate's role is used, NOT the loose "admin" column.
@@ -325,11 +328,17 @@ mod orchestrator_tests {
     #[test]
     fn gate_confirms_student_privileged_action_is_read_only() {
         let store = store_with_row("admin", "not.a.jwt", "{\"keys\":[]}");
-        let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Confirmed(Role::Student))));
+        let state = AuthState::new(
+            store,
+            Box::new(ScriptGate(GateOutcome::Confirmed(Role::Student))),
+        );
         let ctx = resolve_access(&state, true);
         assert_eq!(ctx.source, AuthSource::OnlineGate);
         assert_eq!(ctx.role, Role::Student);
-        assert!(ctx.read_only, "a Student cannot perform a privileged action");
+        assert!(
+            ctx.read_only,
+            "a Student cannot perform a privileged action"
+        );
     }
 }
 
@@ -349,10 +358,7 @@ mod property_tests {
         }
     }
 
-    fn state_with_loose_role(
-        loose_role: &str,
-        gate: GateOutcome,
-    ) -> AuthState {
+    fn state_with_loose_role(loose_role: &str, gate: GateOutcome) -> AuthState {
         let store = SessionStore::open_in_memory().unwrap();
         // Store an UNVERIFIABLE token (garbage) alongside an arbitrary loose role,
         // so Layer 2 always fails and the loose column is the only "role" present
@@ -537,7 +543,11 @@ mod e2e {
         let state = AuthState::new(store, Box::new(ScriptGate(GateOutcome::Unreachable)));
         let ctx = resolve_access(&state, false);
         assert_eq!(ctx.source, AuthSource::OfflineVerified);
-        assert_eq!(ctx.role, Role::Student, "the loose 'admin' column must be ignored");
+        assert_eq!(
+            ctx.role,
+            Role::Student,
+            "the loose 'admin' column must be ignored"
+        );
     }
 
     #[test]
@@ -567,8 +577,10 @@ mod e2e {
         let store = SessionStore::open_in_memory().unwrap();
         cache(&store, "teacher", &minted.token, &minted.jwks, exp);
 
-        let state =
-            AuthState::new(store, Box::new(ScriptGate(GateOutcome::Confirmed(Role::Teacher))));
+        let state = AuthState::new(
+            store,
+            Box::new(ScriptGate(GateOutcome::Confirmed(Role::Teacher))),
+        );
         let ctx = resolve_access(&state, true);
         assert_eq!(ctx.source, AuthSource::OnlineGate);
         assert_eq!(ctx.role, Role::Teacher);
