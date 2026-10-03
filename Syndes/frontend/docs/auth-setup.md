@@ -11,3 +11,7 @@ Syndes uses Supabase Auth with PKCE. Student and Teacher entry pages use the sam
 5. Set `SYNDES_SUPABASE_URL` and `SYNDES_SUPABASE_PUBLISHABLE_KEY` in the environment when building the Rust/Tauri core. The core accepts the exported `NEXT_PUBLIC_` values as a fallback; values stored only in the Next `.env` file do not reach Cargo.
 
 The desktop opens the provider in the system browser and receives the one-time code through `syndes://auth/callback`. The webview exchanges that code using the same PKCE verifier that began sign-in. Rust verifies the resulting Supabase token and reads current Account access before it grants learning or Teacher actions. A new signed-in Account remains Pending until an Administrator approves it.
+
+## Verification status
+
+The current environment has no browser automation for the packaged Tauri app, and the school/Google provider is not configured yet. React component, Tauri command, and SQL policy seam tests cover the implemented rules; they do not prove the operating-system callback journey. After provider setup, manually check the installed app's callback on a cold start and while running, Pending access, approval, offline study after token expiry, Teacher authorization while online, Account switching, revocation on reconnection, and explicit sign-out. Record the results before rollout.

@@ -42,12 +42,12 @@ export function AuthIllustration({ audience }: { audience: AuthAudience }) {
         </h2>
         <p className="mt-7 max-w-[33rem] text-body leading-relaxed text-[#d9e9e5]">
           {audience === "student"
-            ? "Explore your school’s published Modules, carry downloaded lessons with you, and pick up where you left off."
-            : "Shape ideas into Modules, keep your Drafts close, and publish when your work is ready for Learners."}
+            ? "Explore your school’s published Modules, keep them Ready offline, and pick up where you left off."
+            : "Shape ideas into Modules, keep your Drafts close, and Seal them before sharing with Learners."}
         </p>
         <div className="mt-12 h-px w-full bg-white/20" />
         <p className="mt-5 text-meta text-[#c3dfd8]">
-          {audience === "student" ? "Study on this device, even when the connection is away." : "Your Teacher access is checked online before authoring begins."}
+          {audience === "student" ? "Ready offline Modules stay available on this device after approval." : "Your Teacher access is checked online before authoring begins."}
         </p>
       </div>
     </aside>

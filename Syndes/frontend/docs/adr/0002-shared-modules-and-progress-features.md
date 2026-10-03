@@ -6,7 +6,7 @@ Every learner screen needs the same two things: the Module being studied and the
 
 ## Decision
 
-`features/modules` and `features/progress` are the shared contract of the learner experience. Other learner features (`home`, `lessons`, `quiz`, `flashcards`, `settings`) may import from them; they may not import from each other.
+`features/modules` and `features/progress` are the shared contract of the learner experience. Other learner features (`home`, `lessons`, `quiz`, `flashcards`, `settings`) may import from them. Settings also depends narrowly on Authoring and Progress for the explicit legacy import and local-data reset. Other learner features may not import from each other.
 
 Allowed imports from `features/modules`:
 - `module-types`, `module-source`, `routes`, `use-module-param`
@@ -18,6 +18,8 @@ Allowed imports from `features/progress`:
 The two shared features also depend on each other, in narrow ways:
 - `modules → progress`: `routes.ts` uses the `Step` type to build Continue links, and the Module overview reads Progress to offer **Continue module** (spec R4.2).
 - `progress → modules`: the Progress page lists Modules from the source and links to them with `routes`.
+- `settings → authoring`: the one-time legacy import reads `draft-store` to move device-wide Drafts into an approved Teacher Account. It does not render or edit the Authoring workspace.
+- `settings → progress`: the one-time legacy import reads `progress-store`, and Settings reuses `reset-progress-dialog` for explicit local-data removal. It does not own Progress calculations.
 
 ## Consequences
 

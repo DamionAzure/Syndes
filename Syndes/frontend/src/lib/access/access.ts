@@ -52,7 +52,8 @@ export function parseAuthContext(raw: unknown): AuthContext {
 /** Teach is for a verified Teacher or Admin who is not in the read-only floor. */
 export function canTeach(context: AuthContext): boolean {
   return context.active && context.accountId !== null &&
-    (context.role === "teacher" || context.role === "admin") && !context.readOnly;
+    (context.role === "teacher" || context.role === "admin") && !context.readOnly &&
+    context.source === "onlineGate";
 }
 
 /** May study: an approved Account not in the read-only floor (ADR 0004/0007). */

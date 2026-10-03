@@ -1,26 +1,7 @@
-// Local session cache + offline role verification (SPEC B — SQLite Local).
-//
-// ONE-SENTENCE JOB: this module CACHES the role Supabase already decided and
-// owns genuinely-local app data. It NEVER decides a role. When the trusted path
-// fails, it fails TOWARD the stricter online check (the gate), never toward
-// trusting the loose on-device `role` column.
-//
-// THE LEAK THIS CLOSES: the SQLite file lives on the user's device, so anyone can
-// open it and set `role = 'admin'`. Therefore a role read from SQLite is ONLY
-// valid when the accompanying signed Supabase JWT verifies. The loose `role`
-// string is a display convenience; the SIGNATURE is the proof. No code path in
-// this crate branches on the loose column without a signature verify or a live
-// online-gate confirmation.
-//
-// MODULAR BUILD ORDER (do not invert):
-//   Layer 1 (the FLOOR) = `gate` — online re-check, zero crypto. Privileged
-//     actions require being online; offline => Student read-only. A secure app
-//     with no cryptography at all.
-//   Layer 2 (removable enhancement) = `verify` — offline JWT verify against
-//     cached JWKS, layered ON TOP of Layer 1. Delete it and the gate still holds.
-//
-// The grace fallback composes them, strictly descending: offline verify ->
-// online gate -> Student read-only. Never looser.
+// Supabase Auth supplies a signed Account identity. The current Account RPC
+// supplies approval and Teacher permission. A local receipt keeps an approved
+// Learner studying offline after token expiry until explicit sign-out; it never
+// authorizes Teacher operations. The loose cached role column is never trusted.
 
 use serde::Serialize;
 
@@ -30,9 +11,8 @@ pub mod seam;
 pub mod session_store;
 pub mod verify;
 
-/// The three roles Supabase can assign. This is the ONLY trusted role type; it
-/// is produced solely from a verified token's `role` claim (never parsed from the
-/// loose `cached_session.role` column for a trust decision).
+/// Syndes roles returned by current Account authority. A verified token's
+/// optional metadata role is used only for offline display.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Role {
@@ -184,14 +164,9 @@ pub(crate) fn device_now() -> i64 {
 /// study uses a previously confirmed Account receipt after JWT expiry.
 pub(crate) const CLOCK_SKEW_TOLERANCE_SECS: i64 = 60;
 
-// --- Orchestrator: compose Layer 2 -> Layer 1 -> floor (SPEC B Req 4, 6) ------
-//
-// The grace fallback lives in exactly ONE place (`resolve_access`) so it cannot
-// drift. It is a strictly-descending ladder, failing TOWARD more verification:
-//   offline verify (OfflineVerified) -> online gate (OnlineGate) -> Student
-//   read-only (StudentReadOnly, "Connect to continue").
-// It NEVER derives a role from the loose `cached_session.role` column, and never
-// falls open (Req 4.1, 4.4, 6.4).
+// Resolution verifies the signed Account identity before checking current
+// authority. Teacher operations require the online gate; learning may use the
+// last live approval receipt while offline.
 
 use crate::auth::gate::{GateOutcome, OnlineGate};
 use crate::auth::session_store::SessionStore;

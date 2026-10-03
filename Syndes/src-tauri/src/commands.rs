@@ -354,10 +354,9 @@ pub fn auth_online_login(
         .map_err(AppError::from)
 }
 
-/// Resolve the caller's effective access (Req 4, 6): offline verify first, then
-/// the grace fallback (online gate -> Student read-only). Used on app start and
-/// before any privileged action. Infallible by design — it always yields an
-/// AuthContext, at worst the Student read-only floor.
+/// Refresh current Account authority when possible. Learner access may retain
+/// its last confirmed local approval offline; Teacher access requires a fresh
+/// online result. Infallible: unverifiable sessions return the Student floor.
 #[tauri::command]
 pub fn auth_resolve_role(require_privileged: bool, state: State<'_, AuthState>) -> AuthContext {
     auth::resolve_access(&state, require_privileged)

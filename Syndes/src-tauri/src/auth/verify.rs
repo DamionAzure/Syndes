@@ -17,11 +17,9 @@ use serde::Deserialize;
 /// The claims we expect inside the Supabase access token. We decode these only
 /// AFTER the signature verifies.
 ///
-/// IMPORTANT (ADR 0004): Supabase's own top-level `role` claim is the POSTGRES
-/// role (`authenticated`/`anon`), not the Syndes app role. The app role and the
-/// approval flag live in `app_metadata`, which only an Administrator (service
-/// role) can write — never the end user. We therefore read `role`/`approved`
-/// from `app_metadata` and ignore the top-level `role` entirely.
+/// Supabase's top-level `role` is a database role, not a Syndes permission.
+/// Optional `app_metadata.role` supports offline display only. The live Account
+/// RPC decides approval and Teacher permission.
 #[derive(Debug, Deserialize)]
 struct RawClaims {
     sub: String,
@@ -35,9 +33,7 @@ struct RawClaims {
     app_metadata: AppMetadata,
 }
 
-/// Admin-controlled custom claims Supabase nests under `app_metadata`. Both
-/// fields are optional on the wire because newly registered Pending Accounts
-/// have no custom role claim. Current grants come from the live Account RPC.
+/// A new Pending Account may have no application role in token metadata.
 #[derive(Debug, Default, Deserialize)]
 struct AppMetadata {
     #[serde(default)]

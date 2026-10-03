@@ -118,6 +118,7 @@ Run a real Data API request with a valid Supabase session as an integration
 check before production rollout. Never run the fixture suite against live
 student data.
 
-The online Module store contains already-sealed Modules only. `pullModule` in
-`src/lib/moduleStore.ts` is the online-to-local bridge. The service-role key
+The online Module store contains already-sealed Modules only. The Account-scoped
+download and local Module bridge lives in `src/features/modules/module-source.ts`.
+The service-role key
 and other secrets must never appear in `NEXT_PUBLIC_*` values or client bundles.

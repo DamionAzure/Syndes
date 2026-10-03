@@ -1,11 +1,8 @@
 // Data-access layer for the online module store (spec: supabase-database).
 //
-// Student path isolation: NOTHING here is imported by the offline scoring path.
-// The only online->offline bridge is pullModule, which ends by handing a local
-// file to the EXISTING load_module Tauri command — the Rust core is unchanged.
+// This module reads and publishes Supabase Modules. Account-scoped downloads
+// are owned by features/modules/module-source.ts.
 
-import { invoke } from "@tauri-apps/api/core";
-import { writeTextFile, mkdir, BaseDirectory } from "@tauri-apps/plugin-fs";
 import { supabase } from "./supabase";
 import { canTeach } from "./access/access";
 import { resolveAccess } from "./access/access-bridge";
@@ -84,21 +81,4 @@ export async function getModule(id: string): Promise<Module> {
     .single<{ data: Module }>();
   if (error) throw error;
   return data.data;
-}
-
-/**
- * Pull (Req 6.1-6.5): fetch the sealed JSON, write it to local disk, then hand off
- * to the EXISTING offline core via load_module. This is the ONLY online->offline
- * bridge; after it returns, scoring is 100% offline through the unchanged Rust core.
- */
-export async function pullModule(id: string): Promise<Module> {
-  const sealed = await getModule(id); // online: Supabase
-
-  // Ensure the local modules directory exists, then write the plain JSON file.
-  await mkdir("modules", { baseDir: BaseDirectory.AppLocalData, recursive: true });
-  const path = `modules/${id}.json`;
-  await writeTextFile(path, JSON.stringify(sealed), { baseDir: BaseDirectory.AppLocalData });
-
-  // offline: the unchanged Rust core parses it exactly as any locally-held module.
-  return invoke<Module>("load_module", { path });
 }

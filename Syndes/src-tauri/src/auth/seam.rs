@@ -84,9 +84,9 @@ pub fn store_session_online(
 }
 
 /// Validate the token's claim contract (Req 7.1, 7.2) WITHOUT trusting it: decode
-/// the unverified payload only to confirm `sub`, `email`, `exp`, and
-/// `app_metadata.role` (`student|teacher|admin`) are present and well-formed. A
-/// token missing any claim, or carrying an out-of-range `role`, is a
+/// the unverified payload only to confirm `sub`, `email`, and `exp` are present
+/// and an optional application role is well-formed. A token missing a required
+/// claim, or carrying an out-of-range role, is a
 /// `MalformedToken`. This is a shape gate, not a trust decision — the signature
 /// verify is still what grants access.
 fn validate_token_contract(access_token: &str) -> Result<(), AuthError> {

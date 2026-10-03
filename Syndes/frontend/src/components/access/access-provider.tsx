@@ -3,7 +3,7 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { isAuthApiError, type Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 import { canTeach, STUDENT_FLOOR, type AuthContext } from "@/lib/access/access";
 import { resolveAccess } from "@/lib/access/access-bridge";
 import { supabase } from "@/lib/supabase";
@@ -30,11 +30,6 @@ const CHECKING: AccessState = {
 };
 
 const AccessContext = createContext<AccessState>(CHECKING);
-
-function isTerminalAuthError(error: unknown): boolean {
-  return isAuthApiError(error) && error.status >= 400 && error.status < 500 &&
-    error.status !== 408 && error.status !== 429;
-}
 
 export function AccessProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AccessState>(CHECKING);
@@ -64,9 +59,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     let revision = 0;
-    let terminal = false;
     const update = async (session: Session | null) => {
-      if (terminal) return;
       const current = ++revision;
       try {
         const context = await reconcile(session);
@@ -81,28 +74,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    const sessionResult = async (session: Session | null, error: unknown) => {
-      if (isTerminalAuthError(error)) {
-        terminal = true;
-        ++revision;
-        if (isTauri()) {
-          try { await invoke("auth_logout"); } catch { /* UI still fails closed. */ }
-        }
-        if (!mounted) return;
-        setActiveAccountId(null);
-        setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, accountId: null,
-          error: "Your sign-in has ended. Sign in again to restore this Account's saved work.", signOut });
-        return;
-      }
-      await update(session);
-    };
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session) terminal = false;
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       // Supabase warns against awaiting another auth method inside this callback.
       window.setTimeout(() => { void update(session); }, 0);
     });
-    void supabase.auth.getSession().then(({ data, error }) => sessionResult(data.session, error), () => update(null));
+    void supabase.auth.getSession().then(({ data }) => update(data.session), () => update(null));
 
     let unlisten: (() => void) | undefined;
     if (isTauri()) {
@@ -112,7 +88,6 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         handledUrls.add(url);
         try {
           await completeOAuthCallback(url);
-          terminal = false;
           const { data } = await supabase.auth.getSession();
           await update(data.session);
         } catch (cause) {
@@ -123,7 +98,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
       void onOpenUrl((urls) => { for (const url of urls) void handle(url); }).then((stop) => { if (mounted) unlisten = stop; else stop(); }, () => {});
       void getCurrent().then((urls) => { for (const url of urls ?? []) void handle(url); }, () => {});
     }
-    const online = () => { void supabase.auth.refreshSession().then(({ data, error }) => sessionResult(data.session, error), () => update(null)); };
+    const online = () => { void supabase.auth.refreshSession().then(({ data }) => update(data.session), () => update(null)); };
     window.addEventListener("online", online);
     return () => {
       mounted = false;

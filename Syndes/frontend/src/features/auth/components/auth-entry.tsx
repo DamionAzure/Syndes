@@ -14,7 +14,7 @@ const COPY = {
   student: {
     eyebrow: "For students",
     title: "Learn with Syndes",
-    description: "Find published Modules, keep your place, and continue studying your downloads when you are offline.",
+    description: "Find published Modules, keep your place, and study Modules marked Ready offline when you are disconnected.",
     information: "Your answers and Progress stay with your Account on this device.",
     otherHref: "/auth/teacher",
     otherLabel: "Teacher sign in",
@@ -23,7 +23,7 @@ const COPY = {
   teacher: {
     eyebrow: "For teachers",
     title: "Teach with Syndes",
-    description: "Create Drafts, prepare Modules, and review your work in one calm teaching space.",
+    description: "Create Drafts, Seal Modules, and review your work in one calm teaching space.",
     information: "Teacher pages require an online permission check. An Administrator assigns Teacher permission; choosing this page does not grant it.",
     otherHref: "/auth/student",
     otherLabel: "Student sign in",

@@ -48,7 +48,7 @@ describe("parseAuthContext", () => {
 describe("canTeach", () => {
   const account = { accountId: "account-1", active: true } as const;
   it("allows a verified Teacher or Admin", () => {
-    expect(canTeach({ ...account, role: "teacher", approved: true, readOnly: false, source: "offlineVerified" })).toBe(true);
+    expect(canTeach({ ...account, role: "teacher", approved: true, readOnly: false, source: "offlineVerified" })).toBe(false);
     expect(canTeach({ ...account, role: "admin", approved: false, readOnly: false, source: "onlineGate" })).toBe(true);
   });
 
