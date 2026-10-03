@@ -7,7 +7,9 @@ mod loader;
 mod model;
 mod module_store;
 mod normalize;
+mod salt;
 mod scoring;
+mod seal;
 
 use module_store::ModuleStore;
 
@@ -18,6 +20,23 @@ use module_store::ModuleStore;
 pub use normalize::normalize as normalize_for_fixture;
 #[doc(hidden)]
 pub use scoring::seal as seal_for_fixture;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .manage(ModuleStore::default())
+        .invoke_handler(tauri::generate_handler![
+            commands::load_module,
+            commands::check_answer,
+            commands::score_submission,
+            commands::normalize_answer,
+            commands::seal_module,
+            commands::seal_answer,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
 
 // End-to-end proof of the spec 04 T4 checkpoint: the real shipped fixture file
 // loads, validates, and scores correctly through the SAME loader + scoring path
@@ -75,19 +94,4 @@ mod e2e {
         let (c3, p3) = check(question(&module, "q3"), "False").unwrap();
         assert!(!c3 && p3 == 0);
     }
-}
-
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
-        .manage(ModuleStore::default())
-        .invoke_handler(tauri::generate_handler![
-            commands::load_module,
-            commands::check_answer,
-            commands::score_submission,
-            commands::normalize_answer,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
 }

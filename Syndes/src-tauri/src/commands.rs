@@ -3,9 +3,12 @@
 // the JS side lines up with these one-to-one.
 
 use crate::loader;
-use crate::model::{AppError, Answer, CheckResult, Module, ScoreResult};
+use crate::model::{
+    AppError, Answer, CheckResult, DraftModule, Module, ScoreResult, SealedAnswer,
+};
 use crate::module_store::ModuleStore;
 use crate::normalize::normalize;
+use crate::seal;
 use crate::scoring;
 use tauri::State;
 
@@ -100,10 +103,30 @@ pub fn score_submission(
 }
 
 /// Exposed so the SEAL step (teacher/content lane, spec 03) normalizes through
-/// this exact function instead of a second implementation. This is the only
-/// command that ever sees a plaintext answer, and only because the teacher
-/// lane already has it in memory pre-seal - it is never stored or logged here.
+/// this exact function instead of a second implementation. One of the three
+/// commands that sees a plaintext answer, and only because the teacher lane
+/// already has it in memory pre-seal - it is never stored or logged here.
 #[tauri::command]
 pub fn normalize_answer(raw: String) -> String {
     normalize(&raw)
+}
+
+/// Seal a whole draft module (teacher/content lane, spec 03). Takes a draft
+/// whose questions carry PLAINTEXT answers, returns a contract-valid module with
+/// each answer replaced by `{salt, answer_hash}` and the plaintext dropped.
+/// Sealing runs through the core's one normalizer + hash, so seal-time and
+/// check-time can never drift (spec 03 R3). The returned module is safe to ship.
+///
+/// Plaintext is read only to compute hashes and is never stored or logged (R2).
+#[tauri::command]
+pub fn seal_module(draft: DraftModule) -> Result<Module, AppError> {
+    seal::seal_module(draft)
+}
+
+/// Seal ONE answer for incremental authoring (spec 03). The content lane passes
+/// a question id + its plaintext answer and gets back the `{salt, answerHash}`
+/// to write into that question. Same seal path as `seal_module`, one at a time.
+#[tauri::command]
+pub fn seal_answer(question_id: String, plaintext_answer: String) -> Result<SealedAnswer, AppError> {
+    seal::seal_answer(&question_id, &plaintext_answer)
 }

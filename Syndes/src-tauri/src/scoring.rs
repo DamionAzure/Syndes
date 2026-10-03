@@ -45,16 +45,9 @@ pub fn check(question: &Question, raw_answer: &str) -> Result<(bool, u32), AppEr
 }
 
 /// Seal-side helper (spec 03 R2): compute the hash a correct answer should seal
-/// to, given a fresh random salt. Exposed via the `normalize_answer` command plus
-/// this pure function so the teacher/content lane can seal through the SAME
-/// normalizer and hashing path as the student-side check - never a second
-/// implementation (spec 00 R3, spec 03 R3).
-///
-/// Not yet wired to a Tauri command: the content lane (spec 03) seals offline,
-/// one-shot, from a draft module during generation rather than per-keystroke
-/// from the webview, so it is exposed as a plain Rust fn for that lane (or a
-/// future `seal_answer` command) to call directly, and used here by tests.
-#[allow(dead_code)]
+/// to, given a fresh random salt. The seal step (`seal.rs`) calls this so the
+/// teacher/content lane seals through the SAME normalizer and hash join as the
+/// student-side check - never a second implementation (spec 00 R3, spec 03 R3).
 pub fn seal(question_id: &str, correct_answer: &str, salt: &str) -> String {
     hash_answer(question_id, &normalize(correct_answer), salt)
 }

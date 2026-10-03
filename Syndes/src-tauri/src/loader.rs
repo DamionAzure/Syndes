@@ -36,7 +36,10 @@ pub fn load_module(path: &str) -> Result<Module, AppError> {
 /// fields (title, subject, lesson block kinds) are intentionally left permissive -
 /// renderers ignore unknown lesson block kinds safely per spec 00, and that
 /// forward-compatibility is a design choice, not an oversight.
-fn validate(module: &Module) -> Result<(), AppError> {
+///
+/// `pub(crate)` so the seal step (spec 03) can gate its output through the exact
+/// same validation the student path loads against - one definition of "contract-valid".
+pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
     if module.schema_version != SUPPORTED_SCHEMA_VERSION {
         return Err(AppError::ValidationError(format!(
             "unsupported schema_version '{}', expected '{}'",

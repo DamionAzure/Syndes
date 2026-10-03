@@ -72,6 +72,59 @@ pub struct Answer {
     pub raw_answer: String,
 }
 
+// --- Seal-step input types (spec 03, teacher/content lane) ---------------------
+//
+// These mirror Module/Quiz/Question but carry the PLAINTEXT `answer` instead of
+// `salt` + `answer_hash`. They exist only as the INPUT to the seal step: the
+// content lane (its Groq generator, or a hand-authored draft) builds a
+// DraftModule with answers it knows, hands it to the core, and gets back a
+// contract-valid, sealed Module with the plaintext stripped (spec 03 R2). The
+// draft never touches disk from this core and the plaintext is never stored or
+// logged - it lives only in memory for the duration of the seal call.
+
+/// A module before sealing: same shape as the shipped module, but the quiz
+/// carries draft questions with plaintext answers.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DraftModule {
+    pub schema_version: String,
+    pub module: ModuleMeta,
+    #[serde(default)]
+    pub lesson: Option<Lesson>,
+    #[serde(default)]
+    pub quiz: Option<DraftQuiz>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DraftQuiz {
+    pub hash_algo: String,
+    pub normalization: String,
+    pub questions: Vec<DraftQuestion>,
+}
+
+/// A question with its correct answer in the clear. The seal step reads
+/// `answer`, produces `{salt, answer_hash}`, and drops `answer` from the output.
+#[derive(Debug, Clone, Deserialize)]
+pub struct DraftQuestion {
+    pub id: String,
+    pub kind: String,
+    pub prompt: String,
+    #[serde(default)]
+    pub options: Option<Vec<String>>,
+    /// The correct answer, plaintext. For MC/TF this must match one of `options`
+    /// (checked at seal time). Dropped from the sealed output - never shipped.
+    pub answer: String,
+    pub points: u32,
+}
+
+/// Result of sealing a single answer (spec 03): the salt + hash the content lane
+/// writes into the question, with the plaintext gone. Returned by `seal_answer`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SealedAnswer {
+    pub salt: String,
+    pub answer_hash: String,
+}
+
 /// Verdict for a single question. Carries no plaintext answer and no hash (spec 01 R2, R4).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
