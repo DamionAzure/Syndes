@@ -8,6 +8,9 @@
 // after proving the signature. On any failure it writes nothing and returns a
 // typed error carrying no role.
 
+use crate::auth::gate::{GateOutcome, OnlineGate};
+use crate::auth::project::ProjectConfig;
+use crate::auth::session_store::AccountReceipt;
 use crate::auth::session_store::{CachedSession, SessionStore};
 use crate::auth::{verify, AuthContext, AuthError, AuthSource};
 use std::time::Duration;
@@ -26,7 +29,8 @@ const JWKS_FETCH_TIMEOUT: Duration = Duration::from_secs(10);
 pub fn store_session_online(
     store: &SessionStore,
     access_token: &str,
-    jwks_url: &str,
+    project: &ProjectConfig,
+    gate: &dyn OnlineGate,
 ) -> Result<AuthContext, AuthError> {
     // Req 7.1/7.2: the token must carry a well-formed claim contract. We check
     // the shape up front so a structurally wrong token is rejected as a contract
@@ -35,11 +39,23 @@ pub fn store_session_online(
     validate_token_contract(access_token)?;
 
     // Req 2.1: fetch JWKS while online, before any verification or write.
-    let jwks_json = fetch_jwks(jwks_url)?;
+    let jwks_json = fetch_jwks(&project.jwks_url)?;
 
     // Req 2.2: verify signature + exp against the FRESHLY fetched keys, before
     // writing anything. verify_jwt returns the trusted in-token claims.
-    let claims = verify::verify_jwt(access_token, &jwks_json)?;
+    let claims = verify::verify_jwt(access_token, &jwks_json, &project.issuer, false)?;
+    let (role, approved, active) = match gate.recheck(access_token, &claims.sub) {
+        GateOutcome::Confirmed {
+            role,
+            approved,
+            active,
+        } => (role, approved, active),
+        GateOutcome::Unreachable => {
+            return Err(AuthError::NetworkError(
+                "current Account access could not be confirmed".into(),
+            ))
+        }
+    };
 
     // Req 2.3: only now — after a successful verify — persist exactly one row.
     let session = CachedSession {
@@ -47,19 +63,22 @@ pub fn store_session_online(
         email: claims.email.clone(),
         // Cache the role STRING for display only; the proof (token) travels with
         // it and is what any later read re-verifies.
-        role: claims.role.as_str().to_string(),
+        role: role.as_str().to_string(),
         access_token: access_token.to_string(),
         jwks_cache: jwks_json,
         cached_at: crate::auth::device_now(),
         token_exp: claims.exp,
     };
     store.store_cached_session(&session)?;
+    store.store_account_receipt(&claims.sub, AccountReceipt { approved, active })?;
 
     // Req 2.4: return the in-token role with OnlineVerified provenance.
     Ok(AuthContext {
-        role: claims.role,
-        approved: claims.approved,
-        read_only: false,
+        account_id: Some(claims.sub),
+        role,
+        approved,
+        active,
+        read_only: !active,
         source: AuthSource::OnlineVerified,
     })
 }
@@ -73,10 +92,9 @@ pub fn store_session_online(
 fn validate_token_contract(access_token: &str) -> Result<(), AuthError> {
     use base64::Engine;
 
-    let payload_b64 = access_token
-        .split('.')
-        .nth(1)
-        .ok_or_else(|| AuthError::MalformedToken("token is not in header.payload.sig form".to_string()))?;
+    let payload_b64 = access_token.split('.').nth(1).ok_or_else(|| {
+        AuthError::MalformedToken("token is not in header.payload.sig form".to_string())
+    })?;
 
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(payload_b64)
@@ -99,20 +117,15 @@ fn validate_token_contract(access_token: &str) -> Result<(), AuthError> {
         ));
     }
 
-    // The app role lives in app_metadata (admin-controlled), NOT the top-level
-    // Supabase `role` claim (the Postgres role). Require it here and bound it to
-    // the three Syndes roles.
-    let role = value
+    // A newly registered Pending Account has no custom role claim. Current
+    // authority comes from the live Account RPC; reject only malformed claims.
+    if let Some(role) = value
         .get("app_metadata")
         .and_then(|m| m.get("role"))
         .and_then(|r| r.as_str())
-        .ok_or_else(|| {
-            AuthError::MalformedToken(
-                "token is missing required claim: app_metadata.role".to_string(),
-            )
-        })?;
-    // Rejects anything outside student|teacher|admin.
-    crate::auth::Role::from_claim(role)?;
+    {
+        crate::auth::Role::from_claim(role)?;
+    }
 
     Ok(())
 }
@@ -163,23 +176,21 @@ mod tests {
     }
 
     #[test]
-    fn rejects_missing_claim() {
+    fn pending_account_can_sign_in_without_app_metadata_role() {
         let tok = make_token(&serde_json::json!({
             "sub": "u1", "email": "t@x.com", "exp": 1_900_000_000i64
         }));
-        let err = validate_token_contract(&tok).unwrap_err();
-        assert!(matches!(err, AuthError::MalformedToken(_)));
+        assert!(validate_token_contract(&tok).is_ok());
     }
 
     #[test]
-    fn rejects_missing_app_metadata_role() {
+    fn postgres_role_does_not_grant_application_role() {
         // The top-level Supabase `role` (Postgres role) must NOT satisfy the
         // contract: only app_metadata.role counts.
         let tok = make_token(&serde_json::json!({
             "sub": "u1", "email": "t@x.com", "role": "authenticated", "exp": 1_900_000_000i64
         }));
-        let err = validate_token_contract(&tok).unwrap_err();
-        assert!(matches!(err, AuthError::MalformedToken(_)));
+        assert!(validate_token_contract(&tok).is_ok());
     }
 
     #[test]
