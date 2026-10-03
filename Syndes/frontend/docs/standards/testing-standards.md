@@ -1,6 +1,6 @@
 # Testing standards
 
-Test observable behavior at the highest stable seam that still gives fast, deterministic feedback. Add a test runner when there is behavior worth testing; this repository does not yet have one.
+Test observable behavior at the highest stable seam that still gives fast, deterministic feedback. The runner is Vitest with Testing Library in jsdom; run it once with `npm test`, and colocate tests as `*.test.ts` or `*.test.tsx`.
 
 - Use unit or module-integration tests for pure domain logic, component tests for synchronous UI behavior, and browser tests for critical navigation, offline behavior, permissions, and framework integration when those flows exist.
 - Name tests for behavior. Cover success, expected failure, authorization denial, boundary values, and important state transitions in proportion to the feature.

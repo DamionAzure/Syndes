@@ -55,7 +55,7 @@ Use semantic tokens so theme changes do not require separate component markup. C
 
 ### Typography
 
-- Self-host **Lexend** for reading and controls, with `ui-sans-serif, system-ui, sans-serif` fallback. The visual sheet embeds the font; the app does not yet bundle it.
+- Self-host **Lexend** for reading and controls, with `ui-sans-serif, system-ui, sans-serif` fallback. The visual sheet embeds the font; the app bundles the Latin variable font from `src/app/fonts/` with its OFL license.
 - Use 17px body text at about 1.55 line height. Give lesson paragraphs about 1.7 line height and limit reading lines to roughly 62 characters.
 - Use 14px metadata, 17px body, 22px section headings, 32px page sections, and 42px lesson or page titles. The lesson title carries the hierarchy; avoid decorative all-caps labels above every heading.
 - Keep labels visible above fields and use sentence case for controls and headings.

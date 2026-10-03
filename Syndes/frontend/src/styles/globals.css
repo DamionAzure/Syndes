@@ -1,1 +1,161 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* `dark:` follows an explicit Dark choice, or System when the OS prefers dark. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme="system"], [data-theme="system"] *) {
+      @slot;
+    }
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* Folio type scale: 14 metadata, 17 body, 22 section, 32 page, 42 title. */
+  --text-meta: 0.875rem;
+  --text-meta--line-height: 1.45;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.55;
+  --text-section: 1.375rem;
+  --text-section--line-height: 1.3;
+  --text-page: 2rem;
+  --text-page--line-height: 1.2;
+  --text-title: 2.625rem;
+  --text-title--line-height: 1.12;
+
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-destructive: var(--destructive);
+  --color-focus: var(--focus);
+
+  /* shadcn/ui aliases mapped onto folio tokens. */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
+  --color-secondary: var(--surface-muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--surface-muted);
+  --color-accent: var(--surface-muted);
+  --color-accent-foreground: var(--foreground);
+  --color-input: var(--border);
+  --color-ring: var(--focus);
+
+  /* A small radius hierarchy: controls 6px, panels 12px. Soft, not pill-shaped. */
+  --radius-sm: 4px;
+  --radius-md: var(--radius);
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 16px;
+  --radius-4xl: 16px;
+}
+
+:root {
+  --radius: 6px;
+  --control-height: 44px;
+}
+
+/* Also matched by nested previews, so a light swatch stays light inside Dark. */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #f1f2ed;
+  --surface: #fcfcf8;
+  --surface-muted: #e7ece8;
+  --foreground: #203038;
+  --muted-foreground: #53656b;
+  --border: #c5d0cc;
+  --primary: #205a6b;
+  --primary-foreground: #ffffff;
+  --success: #286749;
+  --destructive: #a13f3b;
+  --focus: #205a6b;
+}
+
+[data-controls="large"] {
+  --control-height: 56px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #142127;
+  --surface: #1d2b31;
+  --surface-muted: #283940;
+  --foreground: #eff3f0;
+  --muted-foreground: #b7c8c9;
+  --border: #486168;
+  --primary: #9bcdd5;
+  --primary-foreground: #12252b;
+  --success: #91ceaa;
+  --destructive: #eba6a1;
+  --focus: #9bcdd5;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="system"] {
+    color-scheme: dark;
+    --background: #142127;
+    --surface: #1d2b31;
+    --surface-muted: #283940;
+    --foreground: #eff3f0;
+    --muted-foreground: #b7c8c9;
+    --border: #486168;
+    --primary: #9bcdd5;
+    --primary-foreground: #12252b;
+    --success: #91ceaa;
+    --destructive: #eba6a1;
+    --focus: #9bcdd5;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    @apply bg-background font-sans;
+  }
+  body {
+    @apply bg-background text-body text-foreground antialiased;
+  }
+}
+
+/* Unlayered so it wins over component `outline-none` utilities. */
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* Headings and <main> take focus only programmatically, to orient screen
+   readers after a view change; they are not controls, so draw no ring.
+   Scoped to these elements so roving-focus controls keep their outline. */
+:is(h1, main)[tabindex="-1"]:focus,
+:is(h1, main)[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
