@@ -2,6 +2,10 @@
 
 Guidance for AI agents working in the Syndes frontend (Next.js app).
 
+Read [CODING_STANDARDS.md](CODING_STANDARDS.md) and the applicable files in
+`docs/standards/` before changing application code or project structure. Read
+the relevant installed Next.js documentation for framework-specific behavior.
+
 ## Agent skills
 
 ### Issue tracker
