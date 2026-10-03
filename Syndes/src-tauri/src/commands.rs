@@ -9,6 +9,7 @@ use crate::model::{
 };
 use crate::module_store::ModuleStore;
 use crate::normalize::normalize;
+use crate::scaffold::{self, Scaffold, ScaffoldChoice};
 use crate::seal;
 use crate::scoring;
 use tauri::State;
@@ -193,19 +194,56 @@ fn resolve_generation(result: Result<Module, AppError>, fallback: Module) -> Mod
     }
 }
 
-/// Teacher-side generation (spec 03 T2/T4). Tries live Groq generation and seals
-/// the draft into a contract-valid Module; on ANY failure, returns the guaranteed
-/// pre-generated fallback module so the demo always has something to show. The
+/// The shared "request -> sealed Module, with the guaranteed fallback" path
+/// (spec 03 T4). Factored out so EVERY teacher-side entry point - the free-form
+/// `generate_module` and the scaffold-driven `generate_from_scaffold` - runs the
+/// exact same live-generate -> seal -> fall-back-on-any-error logic. The fallback
+/// guarantee is defined once here and cannot drift between the two commands.
+///
+/// Tries a live Groq generation and seals the draft into a contract-valid Module;
+/// on ANY failure, returns the known-good pre-generated fallback instead. The
 /// draft's plaintext answers never leave memory - they flow straight into the
 /// seal step (spec 03 R2).
-#[tauri::command]
-pub fn generate_module(request: GenerationRequest) -> Result<Module, AppError> {
+fn generate_module_from_request(request: GenerationRequest) -> Result<Module, AppError> {
     // The fallback must exist for the guarantee to hold; if even it cannot load,
     // that is a genuine setup error worth surfacing (not something to paper over).
     let fallback = load_fallback_module()?;
 
     let generated = groq::generate_draft(request).and_then(seal::seal_module);
     Ok(resolve_generation(generated, fallback))
+}
+
+/// Teacher-side generation (spec 03 T2/T4). Free-form topic/source in, sealed
+/// contract-valid Module out, with the guaranteed fallback on any failure. Thin
+/// wrapper over the shared `generate_module_from_request` helper.
+#[tauri::command]
+pub fn generate_module(request: GenerationRequest) -> Result<Module, AppError> {
+    generate_module_from_request(request)
+}
+
+// --- Teacher/content lane: deterministic prompting scaffolds (spec 03 R6) ---------
+//
+// So a non-techy teacher never faces a blank prompt box: `list_scaffolds` hands
+// the UI a fixed, ordered catalog of structured starting points, and
+// `generate_from_scaffold` turns the teacher's pick (with optional overrides)
+// into a GenerationRequest and runs it through the SAME generate+fallback path as
+// `generate_module`. Teacher-side only; no student/offline reach.
+
+/// Return the deterministic built-in scaffold catalog for the UI picker (spec 03
+/// R6). Pure - same ordered set every call, no network, no I/O.
+#[tauri::command]
+pub fn list_scaffolds() -> Vec<Scaffold> {
+    scaffold::builtin_scaffolds()
+}
+
+/// Teacher picks a scaffold (and may override topic/grade/count); this builds the
+/// corresponding GenerationRequest and runs the SAME live-generate -> seal ->
+/// guaranteed-fallback path as `generate_module` (spec 03 R6/R4). An unknown
+/// scaffold id surfaces as a ValidationError BEFORE any generation is attempted.
+#[tauri::command]
+pub fn generate_from_scaffold(choice: ScaffoldChoice) -> Result<Module, AppError> {
+    let request = scaffold::request_from_choice(&choice)?;
+    generate_module_from_request(request)
 }
 
 #[cfg(test)]
