@@ -64,7 +64,7 @@ export function WeekScheduleView() {
           <TableBody>
             {periods.map((period) => (
               <TableRow key={`${period.start}-${period.end}`}>
-                <TableHead scope="row" className="align-top font-normal">
+                <TableHead scope="row" className="h-auto py-3 align-top font-normal">
                   <span className="block font-medium text-foreground">{formatTime(period.start)}</span>
                   <span className="block">to {formatTime(period.end)}</span>
                 </TableHead>
@@ -77,7 +77,11 @@ export function WeekScheduleView() {
                       key={day}
                       className={cn("align-top", day === today && "bg-surface-muted/60")}
                     >
-                      {session ? <SessionText session={session} /> : <span className="sr-only">Free</span>}
+                      {session ? (
+                        <SessionText session={session} />
+                      ) : (
+                        <span className="text-muted-foreground">Free</span>
+                      )}
                     </TableCell>
                   );
                 })}

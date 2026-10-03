@@ -19,7 +19,7 @@ export function TextQuestion({
 
   return (
     <div>
-      <h2 ref={headingRef} tabIndex={-1} className="text-page font-semibold">
+      <h2 ref={headingRef} tabIndex={-1} className="text-section font-semibold text-balance sm:text-page">
         <label htmlFor={inputId}>{question.prompt}</label>
       </h2>
       <p className="mt-3 text-meta text-muted-foreground" id={`${inputId}-hint`}>

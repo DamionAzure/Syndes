@@ -85,8 +85,8 @@ export function GradesView() {
   }
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-5 rounded-xl border border-border bg-surface p-5 sm:grid-cols-[minmax(0,20rem)_12rem_minmax(0,1fr)] sm:items-end">
+    <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-5 rounded-xl border border-border bg-surface p-5 sm:grid-cols-[minmax(0,20rem)_12rem_minmax(0,1fr)] sm:items-end">
         <Field>
           <FieldLabel htmlFor="grades-class" className="text-meta">
             Class
@@ -141,7 +141,7 @@ export function GradesView() {
               {complete ? `Quarter ${quarter} standing` : `Quarter ${quarter} is under way`}
             </h2>
             {complete ? (
-              <dl className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-5">
+              <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5">
                 {DESCRIPTORS.map((descriptor) => (
                   <div key={descriptor} className="grid gap-0.5">
                     <dt className="text-meta text-muted-foreground">{descriptor}</dt>
@@ -171,10 +171,11 @@ export function GradesView() {
               </TableCaption>
               <TableHeader>
                 <TableRow>
-                  <TableHead scope="col" className="w-12 text-right">
+                  {/* No. and Learner stay pinned together while the scores scroll sideways. */}
+                  <TableHead scope="col" className="sticky left-0 w-14 min-w-14 bg-surface-muted text-right">
                     No.
                   </TableHead>
-                  <TableHead scope="col" className="sticky left-0 bg-surface-muted">
+                  <TableHead scope="col" className="sticky left-14 bg-surface-muted shadow-[1px_0_0_var(--border)]">
                     Learner
                   </TableHead>
                   <TableHead scope="col" className="text-right">
@@ -230,9 +231,17 @@ function GradeRow({
 }) {
   const failing = grade?.status === "final" && grade.quarterlyGrade < PASSING_GRADE;
   return (
-    <TableRow className={cn(failing && "bg-destructive/5")}>
-      <TableCell className="text-right text-muted-foreground">{number}</TableCell>
-      <TableHead scope="row" className="sticky left-0 bg-surface text-body font-medium text-foreground">
+    <TableRow className={cn(failing && "bg-[color-mix(in_srgb,var(--surface),var(--destructive)_6%)]")}>
+      <TableCell className={cn("sticky left-0 w-14 min-w-14 text-right text-muted-foreground", failing ? "bg-[color-mix(in_srgb,var(--surface),var(--destructive)_6%)]" : "bg-surface")}>
+        {number}
+      </TableCell>
+      <TableHead
+        scope="row"
+        className={cn(
+          "sticky left-14 text-body font-medium whitespace-nowrap text-foreground shadow-[1px_0_0_var(--border)]",
+          failing ? "bg-[color-mix(in_srgb,var(--surface),var(--destructive)_6%)]" : "bg-surface",
+        )}
+      >
         <Link href={href} className="text-primary underline-offset-4 hover:underline">
           {name}
         </Link>

@@ -13,6 +13,8 @@ import {
 import { adminRoutes } from "@/features/school-directory/routes";
 import { useDirectory } from "@/features/school-directory/use-directory";
 import { SchoolStatistics } from "@/features/school-statistics/components/school-statistics";
+import { standaloneLink } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
 
 const LIST_LIMIT = 4;
 
@@ -75,7 +77,7 @@ export function SchoolOverview() {
             <ul aria-labelledby="waiting-heading" className="divide-y divide-border">
               {waiting.slice(0, LIST_LIMIT).map((account) => (
                 <li key={account.id} className="grid gap-0.5 px-6 py-3">
-                  <Link href={adminRoutes.person(account.id)} className="font-medium text-primary underline-offset-4 hover:underline">
+                  <Link href={adminRoutes.person(account.id)} className={cn(standaloneLink, "justify-self-start font-medium")}>
                     {fullName(account)}
                   </Link>
                   <span className="text-meta text-muted-foreground">

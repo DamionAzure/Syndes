@@ -10,6 +10,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { standaloneLink } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
 import {
   ACCESS_LABEL,
   accessStateOf,
@@ -49,7 +51,7 @@ type Run = ReturnType<typeof useDirectoryAction>["run"];
 
 function Panel({ id, title, description, children }: { id: string; title: string; description?: string; children: ReactNode }) {
   return (
-    <section aria-labelledby={id} className="grid gap-5 rounded-xl border border-border bg-surface p-6">
+    <section aria-labelledby={id} className="grid min-w-0 grid-cols-1 gap-5 rounded-xl border border-border bg-surface p-5 sm:p-6">
       <div>
         <h2 id={id} className="text-section font-semibold">
           {title}
@@ -91,7 +93,7 @@ export function PersonView() {
         title={fullName(account)}
         description={account.email}
         context={
-          <Link href={adminRoutes.people()} className="text-meta text-primary underline-offset-4 hover:underline">
+          <Link href={adminRoutes.people()} className={cn(standaloneLink, "text-meta")}>
             People and access
           </Link>
         }
@@ -99,8 +101,8 @@ export function PersonView() {
       />
       <ActionFeedback feedback={feedback} className="mb-6" />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
-        <div className="grid min-w-0 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+        <div className="grid min-w-0 grid-cols-1 gap-6">
           {state === "waiting" || state === "unenrolled" ? <PlacePanel directory={directory} account={account} run={run} /> : null}
           {state === "learner" ? <SectionPanel directory={directory} account={account} run={run} /> : null}
           {state === "teacher" ? <ClassesPanel directory={directory} account={account} run={run} /> : null}
@@ -134,7 +136,7 @@ export function PersonView() {
           {state !== "admin" && state !== "removed" ? <RemoveAllPanel account={account} run={run} canRemove={state !== "learner"} /> : null}
         </div>
 
-        <aside aria-label="Account details" className="grid gap-6">
+        <aside aria-label="Account details" className="grid min-w-0 grid-cols-1 gap-6">
           <Panel id="details-heading" title="Account">
             <dl className="grid gap-3">
               {[
@@ -145,7 +147,7 @@ export function PersonView() {
               ].map(([term, detail]) => (
                 <div key={term} className="grid gap-0.5 border-b border-border pb-3 last:border-0 last:pb-0">
                   <dt className="text-meta text-muted-foreground">{term}</dt>
-                  <dd className="break-words tabular-nums">{detail}</dd>
+                  <dd className="tabular-nums [overflow-wrap:anywhere]">{detail}</dd>
                 </div>
               ))}
             </dl>

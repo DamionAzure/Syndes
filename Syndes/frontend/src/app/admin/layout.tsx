@@ -14,9 +14,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <AdminGuard>
       <div
         role="note"
-        className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-surface-muted px-4 py-2 text-meta text-muted-foreground"
+        className="mb-6 grid grid-cols-1 items-center gap-x-4 gap-y-1 rounded-lg border border-border bg-surface-muted px-4 py-2 text-meta text-muted-foreground sm:grid-cols-[minmax(0,1fr)_auto]"
       >
-        <span className="flex min-w-0 flex-1 items-start gap-2 py-1">
+        <span className="flex min-w-0 items-start gap-2 py-1">
           <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-primary" />
           <span>
             <span className="font-medium text-foreground">Sample school.</span> People, sections and statistics are

@@ -8,6 +8,8 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { standaloneLink } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
 import {
   activeAssignment,
   classesIn,
@@ -144,7 +146,7 @@ function SectionPanel({ directory, section, run }: { directory: Directory; secti
         </h3>
         <Link
           href={adminRoutes.people("learner")}
-          className="text-meta text-muted-foreground tabular-nums underline-offset-4 hover:text-foreground hover:underline"
+          className={cn(standaloneLink, "text-meta text-muted-foreground tabular-nums hover:text-foreground")}
         >
           {learners} {learners === 1 ? "learner" : "learners"} enrolled
         </Link>
@@ -222,7 +224,7 @@ function ClassRow({ directory, schoolClass, run }: { directory: Directory; schoo
       <TableCell className="align-top">
         {teacher && !editing ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Link href={adminRoutes.person(teacher.id)} className="text-primary underline-offset-4 hover:underline">
+            <Link href={adminRoutes.person(teacher.id)} className={standaloneLink}>
               {fullName(teacher)}
             </Link>
             <div className="flex gap-1">

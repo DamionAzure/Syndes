@@ -49,10 +49,17 @@ function Figure({
   tone?: "failing";
 }) {
   return (
-    <div className="grid content-start gap-1 border-border py-4 sm:px-6 sm:first:pl-0 lg:border-l lg:first:border-l-0">
+    <div className="grid min-w-0 content-start gap-1 border-t border-border py-4 @2xl:border-t-0 @2xl:border-l @2xl:px-5 @2xl:first:border-l-0 @2xl:first:pl-0">
       <dt className="text-muted-foreground">{term}</dt>
-      <dd className={cn("text-title font-semibold tabular-nums", tone === "failing" && "text-destructive")}>{value}</dd>
-      <dd className="text-meta text-muted-foreground tabular-nums">{basis}</dd>
+      <dd
+        className={cn(
+          "text-page leading-none font-semibold tracking-tight tabular-nums @4xl:text-title",
+          tone === "failing" && "text-destructive",
+        )}
+      >
+        {value}
+      </dd>
+      <dd className="mt-1 text-meta text-muted-foreground tabular-nums">{basis}</dd>
       {change ? <dd className="text-meta tabular-nums">{change}</dd> : null}
     </div>
   );
@@ -86,8 +93,8 @@ export function SchoolStatistics() {
   const passingWidth = rates.passingRate ?? 0;
 
   return (
-    <div className="grid gap-6">
-      <section aria-labelledby="standing-heading" className="rounded-xl border border-border bg-surface px-6 py-6">
+    <div className="grid min-w-0 grid-cols-1 gap-6">
+      <section aria-labelledby="standing-heading" className="@container rounded-xl border border-border bg-surface px-5 py-6 sm:px-6">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <h2 id="standing-heading" className="text-section font-semibold">
             {snapshotLabel(latest)}
@@ -97,7 +104,9 @@ export function SchoolStatistics() {
           </p>
         </div>
 
-        <dl className="mt-2 grid sm:grid-cols-2 lg:grid-cols-4">
+        {/* Laid out by the panel's own width, so the figures never collide beside the side column. */}
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 @2xl:grid-cols-4 @2xl:gap-x-0">
+
           <Figure
             term="Enrolled"
             value={String(latest.enrolled)}
@@ -149,7 +158,6 @@ export function SchoolStatistics() {
           <TableHeader>
             <TableRow>
               <TableHead scope="col">Grading period</TableHead>
-              <TableHead scope="col">Counted</TableHead>
               <TableHead scope="col" className="text-right">
                 Enrolled
               </TableHead>
@@ -169,12 +177,13 @@ export function SchoolStatistics() {
               const row = ratesOf(snapshot);
               return (
                 <TableRow key={snapshot.id}>
-                  <TableHead scope="row" className="font-medium text-foreground">
-                    {snapshotLabel(snapshot)}
+                  {/* The timestamp sits under its period, so the rates fit beside them without scrolling. */}
+                  <TableHead scope="row" className="h-auto py-3 font-medium whitespace-normal text-foreground">
+                    <span className="block">{snapshotLabel(snapshot)}</span>
+                    <time dateTime={snapshot.capturedAt} className="block font-normal text-muted-foreground">
+                      Counted {counted(snapshot.capturedAt)}
+                    </time>
                   </TableHead>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    <time dateTime={snapshot.capturedAt}>{counted(snapshot.capturedAt)}</time>
-                  </TableCell>
                   <TableCell className="text-right">{snapshot.enrolled}</TableCell>
                   <TableCell className="text-right">{percentLabel(row.passingRate)}</TableCell>
                   <TableCell className="text-right">{percentLabel(row.failingRate)}</TableCell>

@@ -26,7 +26,7 @@ export function LessonReader({
   return (
     <article>
       <StepProgress current={number} total={total} label={place} className="max-w-[20rem]" />
-      <h1 ref={headingRef} tabIndex={-1} className="mt-6 text-title font-semibold text-balance">
+      <h1 ref={headingRef} tabIndex={-1} className="mt-6 text-page font-semibold text-balance sm:text-title">
         {lesson.title}
       </h1>
       {lesson.subtitle ? (

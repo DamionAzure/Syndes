@@ -7,6 +7,8 @@ import { useEffect, useRef } from "react";
 import { FolioLayout } from "@/components/layout/folio-layout";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonVariants } from "@/components/ui/button";
+import { standaloneLink } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
 import { checkDraft, type DraftIssue } from "../draft-checks";
 import { draftTitle, newLesson, parsePart, partKey } from "../draft-store";
 import type { DraftPart, ModuleDraft } from "../draft-types";
@@ -117,7 +119,7 @@ function DraftEditor({ draft, part }: { draft: ModuleDraft; part: DraftPart }) {
         title={draftTitle(draft)}
         description="Changes are saved on this device as you type."
         context={
-          <Link href={authoringRoutes.drafts()} className="text-meta text-primary underline-offset-4 hover:underline">
+          <Link href={authoringRoutes.drafts()} className={cn(standaloneLink, "text-meta")}>
             All drafts
           </Link>
         }

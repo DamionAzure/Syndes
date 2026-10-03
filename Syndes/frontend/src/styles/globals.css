@@ -144,9 +144,78 @@
 /* Headings and <main> take focus only programmatically, to orient screen
    readers after a view change; they are not controls, so draw no ring.
    Scoped to these elements so roving-focus controls keep their outline. */
-:is(h1, main)[tabindex="-1"]:focus,
-:is(h1, main)[tabindex="-1"]:focus-visible {
+:is(h1, h2, h3, main)[tabindex="-1"]:focus,
+:is(h1, h2, h3, main)[tabindex="-1"]:focus-visible {
   outline: none;
+}
+
+/* Scrollbars: thin, rounded, and quiet until used. The track stays
+   transparent so panels keep their own surface; the thumb uses the border
+   token so it reads in both themes. The page reserves its gutter so opening
+   a dialog (which locks scroll) never shifts the layout sideways. */
+:root {
+  --scrollbar-thumb: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+  --scrollbar-thumb-hover: color-mix(in oklch, var(--muted-foreground) 75%, transparent);
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+*:hover {
+  scrollbar-color: var(--scrollbar-thumb-hover) transparent;
+}
+
+/* WebKit and Blink still honour these when scrollbar-width is unsupported (Safari < 18.2). */
+@supports not (scrollbar-width: thin) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: content-box;
+    background-color: var(--scrollbar-thumb);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Loading placeholders: a soft sweep across the shape of what is coming.
+   The global reduced-motion rule above stops it for anyone who asks. */
+@keyframes skeleton-sweep {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+.skeleton {
+  background-color: var(--surface-muted);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklch, var(--surface) 70%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-sweep 1.6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
