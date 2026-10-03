@@ -11,6 +11,10 @@ mod model;
 mod module_store;
 mod normalize;
 mod salt;
+// Teacher-side, deterministic prompting scaffolds (spec 03 R6, the SHOULD task).
+// Pure/offline, but TEACHER-SIDE: like groq, it is deliberately NOT imported by
+// loader/scoring/module_store - the student/offline path must never reach it.
+mod scaffold;
 mod scoring;
 mod seal;
 
@@ -46,6 +50,8 @@ pub fn run() {
             commands::seal_module,
             commands::seal_answer,
             commands::generate_module,
+            commands::list_scaffolds,
+            commands::generate_from_scaffold,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
