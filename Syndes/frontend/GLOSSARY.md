@@ -35,12 +35,20 @@ _Avoid_: Card (on its own)
 ## People
 
 **Learner**:
-The student using Syndes on a device. A Learner has no account.
-_Avoid_: User, profile, account
+The student using Syndes to study Modules and complete Quizzes.
+_Avoid_: User, profile
 
 **Teacher**:
 The person who prepares and reviews Module content before Learners use it.
 _Avoid_: Author, admin
+
+**Administrator**:
+A person authorized to grant or remove Teacher access.
+_Avoid_: Teacher
+
+**Account**:
+A person's Syndes identity, used to determine their access to learning and teaching activities.
+_Avoid_: Profile
 
 ## Place and state
 
