@@ -26,7 +26,8 @@ pub fn load_module(path: &str) -> Result<Module, AppError> {
     let raw = fs::read_to_string(Path::new(path))
         .map_err(|e| AppError::ModuleNotFound(format!("{path}: {e}")))?;
 
-    let module: Module = serde_json::from_str(&raw).map_err(|e| AppError::ParseError(e.to_string()))?;
+    let module: Module =
+        serde_json::from_str(&raw).map_err(|e| AppError::ParseError(e.to_string()))?;
 
     validate(&module)?;
     Ok(module)
@@ -78,7 +79,9 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
         )));
     }
     if quiz.questions.is_empty() {
-        return Err(AppError::ValidationError("quiz.questions must not be empty".to_string()));
+        return Err(AppError::ValidationError(
+            "quiz.questions must not be empty".to_string(),
+        ));
     }
 
     for q in &quiz.questions {
@@ -92,7 +95,10 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
             return Err(AppError::MissingField(format!("question[{}].salt", q.id)));
         }
         if q.answer_hash.trim().is_empty() {
-            return Err(AppError::MissingField(format!("question[{}].answer_hash", q.id)));
+            return Err(AppError::MissingField(format!(
+                "question[{}].answer_hash",
+                q.id
+            )));
         }
 
         let needs_options = OPTION_KINDS.contains(&q.kind.as_str());
@@ -112,7 +118,10 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
                 )));
             }
             None if needs_options => {
-                return Err(AppError::MissingField(format!("question[{}].options", q.id)));
+                return Err(AppError::MissingField(format!(
+                    "question[{}].options",
+                    q.id
+                )));
             }
             _ => {}
         }
@@ -124,7 +133,7 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{ModuleMeta, Quiz, Question};
+    use crate::model::{ModuleMeta, Question, Quiz};
 
     fn base_module() -> Module {
         Module {
@@ -171,7 +180,10 @@ mod tests {
         if let Some(quiz) = &mut m.quiz {
             quiz.questions[0].kind = "matching".to_string();
         }
-        assert!(matches!(validate(&m), Err(AppError::UnknownQuestionKind(_))));
+        assert!(matches!(
+            validate(&m),
+            Err(AppError::UnknownQuestionKind(_))
+        ));
     }
 
     #[test]

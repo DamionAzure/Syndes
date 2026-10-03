@@ -40,7 +40,10 @@ mod tests {
         // for a 128-bit space.
         let mut seen = HashSet::new();
         for _ in 0..1000 {
-            assert!(seen.insert(generate_salt()), "salt collision - RNG is broken");
+            assert!(
+                seen.insert(generate_salt()),
+                "salt collision - RNG is broken"
+            );
         }
     }
 }

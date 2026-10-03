@@ -59,7 +59,10 @@ fn main() {
         num_questions: Some(3),
     };
 
-    println!("Requesting a module from Groq (topic: \"{}\")…", request.topic);
+    println!(
+        "Requesting a module from Groq (topic: \"{}\")…",
+        request.topic
+    );
 
     // The live path: generate a draft (network), then seal it (drops plaintext).
     match generate_draft(request) {
@@ -69,7 +72,9 @@ fn main() {
                 Ok(sealed) => {
                     println!("\n✓ LIVE generation + seal succeeded. Sealed module:");
                     print_sealed(&sealed);
-                    println!("\nThe sealed module above carries NO plaintext answers (only hashes).");
+                    println!(
+                        "\nThe sealed module above carries NO plaintext answers (only hashes)."
+                    );
                 }
                 Err(e) => {
                     // Draft came back but failed to seal (e.g. an MC answer not in

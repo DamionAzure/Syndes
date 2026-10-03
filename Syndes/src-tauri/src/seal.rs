@@ -13,9 +13,7 @@
 // never written into the returned Module, never stored, never logged.
 
 use crate::loader;
-use crate::model::{
-    AppError, DraftModule, DraftQuestion, Module, Question, Quiz, SealedAnswer,
-};
+use crate::model::{AppError, DraftModule, DraftQuestion, Module, Question, Quiz, SealedAnswer};
 use crate::salt::generate_salt;
 use crate::scoring;
 
@@ -49,7 +47,10 @@ fn seal_question(q: &DraftQuestion) -> Result<SealedAnswer, AppError> {
                 }
             }
             None => {
-                return Err(AppError::MissingField(format!("question[{}].options", q.id)));
+                return Err(AppError::MissingField(format!(
+                    "question[{}].options",
+                    q.id
+                )));
             }
         }
     }
@@ -146,10 +147,7 @@ mod tests {
                         id: "q1".to_string(),
                         kind: "multiple_choice".to_string(),
                         prompt: "Which gas?".to_string(),
-                        options: Some(vec![
-                            "Oxygen".to_string(),
-                            "Carbon dioxide".to_string(),
-                        ]),
+                        options: Some(vec!["Oxygen".to_string(), "Carbon dioxide".to_string()]),
                         answer: "Carbon dioxide".to_string(),
                         points: 1,
                     },
