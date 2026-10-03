@@ -1,3 +1,3 @@
 export default function Home() {
-  return <div>Syndes</div>;
+  return <h1 className="text-title font-semibold">Syndes</h1>;
 }
