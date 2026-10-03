@@ -53,8 +53,9 @@ export function importLegacyDrafts(storage: Storage, accountId: string | null, c
 /** Explicitly removes this Account's local work, including saved Module files; other Accounts and legacy data remain. */
 export async function resetLocalAccountData(storage: Storage, accountId: string): Promise<void> {
   if (!/^[a-zA-Z0-9_-]+$/.test(accountId)) throw new Error("Invalid Account id.");
-  const { isTauri } = await import("@tauri-apps/api/core");
-  if (isTauri()) {
+  const { isTauri, invoke } = await import("@tauri-apps/api/core");
+  const desktop = isTauri();
+  if (desktop) {
     const { exists, remove, BaseDirectory } = await import("@tauri-apps/plugin-fs");
     const path = `modules/${accountId}`;
     if (await exists(path, { baseDir: BaseDirectory.AppLocalData })) {
@@ -74,4 +75,5 @@ export async function resetLocalAccountData(storage: Storage, accountId: string)
     notifyStorage(key);
   }
   if (typeof window !== "undefined") window.dispatchEvent(new Event("syndes:modules-changed"));
+  if (desktop) await invoke("clear_loaded_modules");
 }
