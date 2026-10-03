@@ -19,9 +19,9 @@ export function TextQuestion({
 
   return (
     <div>
-      <h1 ref={headingRef} tabIndex={-1} className="text-page font-semibold">
+      <h2 ref={headingRef} tabIndex={-1} className="text-page font-semibold">
         <label htmlFor={inputId}>{question.prompt}</label>
-      </h1>
+      </h2>
       <p className="mt-3 text-meta text-muted-foreground" id={`${inputId}-hint`}>
         Type your answer.
       </p>

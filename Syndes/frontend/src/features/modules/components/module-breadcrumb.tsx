@@ -20,7 +20,7 @@ export function ModuleBreadcrumb({
   current?: string;
 }) {
   return (
-    <Breadcrumb aria-label="Breadcrumb" className="mb-6">
+    <Breadcrumb aria-label="Breadcrumb">
       <BreadcrumbList className="text-meta">
         <BreadcrumbItem>
           <BreadcrumbLink render={<Link href={routes.library()} />}>Modules</BreadcrumbLink>

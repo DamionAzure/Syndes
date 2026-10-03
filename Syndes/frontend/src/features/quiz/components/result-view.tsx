@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { ListChecks } from "lucide-react";
+import { useEffect } from "react";
 import { LoadingState } from "@/components/layout/local-data-boundary";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ModuleBreadcrumb } from "@/features/modules/components/module-breadcrumb";
 import { ModuleNotFound } from "@/features/modules/components/module-not-found";
@@ -22,6 +24,21 @@ const STATUS_WORD: Record<QuestionStatus, string> = {
   incorrect: "Incorrect",
   unanswered: "Unanswered",
 };
+
+// Colour only reinforces the status word next to it.
+const STATUS_DOT: Record<QuestionStatus, string> = {
+  correct: "bg-success",
+  incorrect: "bg-destructive",
+  unanswered: "border border-muted-foreground",
+};
+
+const STATUS_CHIP: Record<QuestionStatus, string> = {
+  correct: "bg-success/10 text-success",
+  incorrect: "bg-destructive/10 text-destructive",
+  unanswered: "bg-surface-muted text-muted-foreground",
+};
+
+const RESULT_HEADING_ID = "quiz-result-heading";
 
 export function ResultView() {
   const found = useModuleParam();
@@ -43,13 +60,20 @@ function QuizResultGate({ found, quiz }: { found: Module; quiz: Quiz }) {
 
   if (versionReset && !submitted) {
     return (
-      <div className="mx-auto max-w-[44rem]">
-        <ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Quiz result" />
+      <>
+        <PageHeader
+          icon={ListChecks}
+          context={<ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Quiz result" />}
+          title="Quiz result"
+          description={found.title}
+          actions={
+            <Link href={routes.quiz(found.id)} className={buttonVariants()}>
+              Start short quiz
+            </Link>
+          }
+        />
         <VersionResetNotice />
-        <Link href={routes.quiz(found.id)} className={buttonVariants()}>
-          Start short quiz
-        </Link>
-      </div>
+      </>
     );
   }
   if (!submitted || !progress) return <LoadingState label="Opening the quiz…" />;
@@ -74,10 +98,9 @@ function QuizResult({
   const router = useRouter();
   // Rebuilt by scoring the saved answers again; no score is stored.
   const score = useScore(found.id, answers);
-  const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    headingRef.current?.focus();
+    document.getElementById(RESULT_HEADING_ID)?.focus();
   }, []);
 
   function retry() {
@@ -85,57 +108,88 @@ function QuizResult({
     router.push(routes.quiz(found.id));
   }
 
+  const statusOf = (questionId: string): QuestionStatus =>
+    score.questions.find((entry) => entry.questionId === questionId)?.status ?? "unanswered";
+  const counts = (["correct", "incorrect", "unanswered"] as const).map((status) => ({
+    status,
+    count: quiz.questions.filter((question) => statusOf(question.id) === status).length,
+  }));
+
   return (
-    <div className="mx-auto max-w-[44rem]">
-      <ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Quiz result" />
+    <>
+      <PageHeader
+        id={RESULT_HEADING_ID}
+        icon={ListChecks}
+        context={<ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Quiz result" />}
+        title="Quiz result"
+        description={found.title}
+        actions={
+          <>
+            <Link href={routes.lesson(found.id, 1)} className={buttonVariants({ variant: "outline" })}>
+              Review lesson
+            </Link>
+            <Button onClick={retry}>Retry</Button>
+          </>
+        }
+      />
 
-      <div className="border border-border bg-surface p-6 sm:p-10">
-        <h1 ref={headingRef} tabIndex={-1} className="text-meta text-muted-foreground">
-          Quiz result
-        </h1>
-        <p className="mt-2 text-title font-semibold tabular-nums">
-          {score.correct} of {score.total}
-        </p>
-        <p className="mt-1 text-muted-foreground">Scored on this device</p>
+      <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
+        <section
+          aria-labelledby="score-heading"
+          className="rounded-xl border border-border bg-surface p-6 lg:sticky lg:top-8"
+        >
+          <h2 id="score-heading" className="text-meta text-muted-foreground">
+            Your score
+          </h2>
+          <p className="mt-1 text-title leading-none font-semibold tabular-nums">
+            {score.correct} of {score.total}
+          </p>
+          <p className="mt-2 text-muted-foreground">Scored on this device</p>
+          <dl className="mt-6 grid gap-2 border-t border-border pt-4 text-meta">
+            {counts.map(({ status, count }) => (
+              <div key={status} className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-2">
+                  <span aria-hidden="true" className={cn("size-2 rounded-full", STATUS_DOT[status])} />
+                  {STATUS_WORD[status]}
+                </dt>
+                <dd className="font-semibold tabular-nums">{count}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
-        <h2 className="mt-10 text-section font-semibold">Your answers</h2>
-        <ol className="mt-4 border-t border-border">
-          {quiz.questions.map((question, index) => {
-            const status =
-              score.questions.find((entry) => entry.questionId === question.id)?.status ?? "unanswered";
-            const given = answerText(question, answers[question.id]);
-            return (
-              <li key={question.id} className="grid gap-1 border-b border-border py-4">
-                <p className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="text-meta text-muted-foreground">Question {index + 1}</span>
-                  <span
-                    className={cn(
-                      "flex items-center gap-2 text-meta font-semibold",
-                      status === "correct" && "text-success",
-                      status === "incorrect" && "text-destructive",
-                      status === "unanswered" && "text-muted-foreground",
-                    )}
-                  >
-                    <span aria-hidden="true" className="size-2 bg-current" />
-                    {STATUS_WORD[status]}
-                  </span>
-                </p>
-                <p>{question.prompt}</p>
-                <p className="text-meta text-muted-foreground">
-                  {given ? `Your answer: ${given}` : "No answer given"}
-                </p>
-              </li>
-            );
-          })}
-        </ol>
-
-        <div className="mt-10 flex flex-wrap gap-4">
-          <Button onClick={retry}>Retry</Button>
-          <Link href={routes.lesson(found.id, 1)} className={buttonVariants({ variant: "outline" })}>
-            Review lesson
-          </Link>
-        </div>
+        <section aria-labelledby="answers-heading" className="overflow-hidden rounded-xl border border-border bg-surface">
+          <h2 id="answers-heading" className="border-b border-border px-6 py-5 text-section font-semibold">
+            Your answers
+          </h2>
+          <ol className="divide-y divide-border">
+            {quiz.questions.map((question, index) => {
+              const status = statusOf(question.id);
+              const given = answerText(question, answers[question.id]);
+              return (
+                <li key={question.id} className="grid gap-2 px-6 py-5">
+                  <p className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-meta text-muted-foreground">Question {index + 1}</span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-md px-2 py-0.5 text-meta font-semibold",
+                        STATUS_CHIP[status],
+                      )}
+                    >
+                      <span aria-hidden="true" className={cn("size-2 rounded-full", STATUS_DOT[status])} />
+                      {STATUS_WORD[status]}
+                    </span>
+                  </p>
+                  <p className="font-medium">{question.prompt}</p>
+                  <p className="text-meta text-muted-foreground">
+                    {given ? `Your answer: ${given}` : "No answer given"}
+                  </p>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
       </div>
-    </div>
+    </>
   );
 }

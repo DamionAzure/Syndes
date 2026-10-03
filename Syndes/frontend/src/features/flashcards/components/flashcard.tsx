@@ -27,7 +27,7 @@ export function Flashcard({
       aria-label={side === "front" ? "Front of card" : "Back of card"}
       aria-describedby="flashcard-keys"
       onKeyDown={onKeyDown}
-      className="grid aspect-square w-full max-w-[28rem] grid-rows-[auto_1fr] border border-border bg-surface p-8"
+      className="grid aspect-square w-full max-w-[28rem] grid-rows-[auto_1fr] rounded-2xl border border-border bg-surface p-8"
     >
       <p className="text-meta text-muted-foreground">{side === "front" ? "Front" : "Back"}</p>
       <p

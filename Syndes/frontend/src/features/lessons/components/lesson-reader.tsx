@@ -26,7 +26,7 @@ export function LessonReader({
   return (
     <article>
       <StepProgress current={number} total={total} label={place} className="max-w-[20rem]" />
-      <h1 ref={headingRef} tabIndex={-1} className="mt-6 text-title font-semibold">
+      <h1 ref={headingRef} tabIndex={-1} className="mt-6 text-title font-semibold text-balance">
         {lesson.title}
       </h1>
       {lesson.subtitle ? (
@@ -43,8 +43,8 @@ export function LessonReader({
               </p>
             ))}
             {section.tryThis?.length ? (
-              <aside aria-label="Try this" className="mt-6 max-w-[62ch] border-l-2 border-primary pl-5">
-                <p className="text-meta text-muted-foreground">Try this</p>
+              <aside aria-label="Try this" className="mt-6 max-w-[62ch] rounded-lg border border-primary/30 bg-surface-muted/60 px-5 py-4">
+                <p className="text-meta font-semibold text-primary">Try this</p>
                 {section.tryThis.map((line) => (
                   <p key={line} className="mt-2 leading-[1.7]">
                     {line}
@@ -58,7 +58,7 @@ export function LessonReader({
 
       <nav
         aria-label="Lesson navigation"
-        className="mt-12 flex flex-wrap justify-between gap-4 border-t border-border pt-8"
+        className="mt-12 flex flex-wrap justify-between gap-4 border-t border-border pt-6"
       >
         <Link href={previous.href} className={buttonVariants({ variant: "outline" })}>
           {previous.label}

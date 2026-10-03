@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { useModules } from "@/features/modules/module-source";
 import { routes } from "@/features/modules/routes";
@@ -13,17 +14,17 @@ export function QuizListView() {
   const withQuiz = modules.filter((summary) => summary.readyOffline && summary.questionCount > 0);
 
   return (
-    <div className="mx-auto max-w-[56rem]">
+    <div>
       {withQuiz.length === 0 ? (
-        <div className="mt-10 border-y border-border py-8">
+        <div className="grid justify-items-center gap-2 rounded-xl border border-dashed border-border bg-surface px-6 py-12 text-center">
           <h2 className="text-section font-semibold">No quizzes on this device</h2>
-          <p className="mt-2 text-muted-foreground">Quizzes come with modules.</p>
-          <Link href={routes.library()} className={buttonVariants({ variant: "outline", className: "mt-6" })}>
+          <p className="text-muted-foreground">Quizzes come with modules.</p>
+          <Link href={routes.library()} className={buttonVariants({ variant: "outline", className: "mt-4" })}>
             Browse modules
           </Link>
         </div>
       ) : (
-        <ul className="mt-10 border-t border-border">
+        <ul aria-label="Quizzes" className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
           {withQuiz.map((summary) => {
             const { progress } = readModuleProgress(store, summary);
             const started =
@@ -38,13 +39,18 @@ export function QuizListView() {
             return (
               <li
                 key={summary.id}
-                className="grid gap-4 border-b border-border py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                className="grid gap-4 px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8"
               >
-                <div>
-                  <h2 className="text-section font-semibold">{summary.title}</h2>
-                  <p className="text-meta text-muted-foreground">
-                    {summary.questionCount} {summary.questionCount === 1 ? "question" : "questions"}
-                    {status ? ` · ${status}` : ""}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-body font-semibold">{summary.title}</h2>
+                    {status ? (
+                      <Badge variant={status === "Completed" ? "default" : "outline"}>{status}</Badge>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-meta text-muted-foreground">
+                    {summary.subject}, {summary.questionCount}{" "}
+                    {summary.questionCount === 1 ? "question" : "questions"}
                   </p>
                 </div>
                 <Link

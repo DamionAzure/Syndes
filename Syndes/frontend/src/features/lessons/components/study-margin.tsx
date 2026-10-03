@@ -1,7 +1,19 @@
 import { Availability } from "@/features/modules/components/availability";
 import type { Lesson } from "@/features/modules/module-types";
 
-/** Supporting notes kept out of the reading line, separated by rules. */
+function MarginNote({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg bg-surface-muted/60 p-4">
+      <h2 className="text-body font-semibold">{title}</h2>
+      <div className="mt-1 text-meta text-muted-foreground">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * Supporting notes kept out of the reading line. Beside the page on wide
+ * screens; a row of notes under it when the margin drops below.
+ */
 export function StudyMargin({
   lesson,
   place,
@@ -12,28 +24,25 @@ export function StudyMargin({
   readyOffline: boolean;
 }) {
   return (
-    <div className="grid gap-6 text-meta">
-      <section className="border-b border-border pb-6">
-        <h2 className="font-semibold text-body">Where you are</h2>
-        <p className="mt-1 text-muted-foreground">{place}</p>
-      </section>
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
+      <MarginNote title="Where you are">
+        <p>{place}</p>
+      </MarginNote>
 
       {lesson.remember?.length ? (
-        <section className="border-b border-border pb-6">
-          <h2 className="font-semibold text-body">Remember</h2>
-          <ul className="mt-2 grid gap-2 text-muted-foreground">
+        <MarginNote title="Remember">
+          <ul className="grid gap-2">
             {lesson.remember.map((note) => (
               <li key={note}>{note}</li>
             ))}
           </ul>
-        </section>
+        </MarginNote>
       ) : null}
 
       {readyOffline ? (
-        <section>
-          <h2 className="font-semibold text-body">Available on this device</h2>
-          <Availability readyOffline className="mt-2 text-muted-foreground" />
-        </section>
+        <MarginNote title="Available on this device">
+          <Availability readyOffline />
+        </MarginNote>
       ) : null}
     </div>
   );

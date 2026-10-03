@@ -29,7 +29,7 @@ export function LocalDataBoundary({
 
 export function LoadingState({ label }: { label: string }) {
   return (
-    <p role="status" className="mx-auto max-w-[56rem] text-muted-foreground">
+    <p role="status" className="rounded-xl border border-dashed border-border px-6 py-10 text-center text-muted-foreground">
       {label}
     </p>
   );

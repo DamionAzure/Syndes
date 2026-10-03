@@ -19,9 +19,9 @@ export function ChoiceQuestion({ question, answer, onAnswer, headingRef }: Choic
 
   return (
     <div>
-      <h1 id={headingId} ref={headingRef} tabIndex={-1} className="text-page font-semibold">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-page font-semibold">
         {question.prompt}
-      </h1>
+      </h2>
       <RadioGroup
         aria-labelledby={headingId}
         value={answer === "" ? null : answer}

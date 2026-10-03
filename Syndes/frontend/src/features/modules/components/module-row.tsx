@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import type { ModuleSummary } from "../module-types";
 import { routes } from "../routes";
@@ -8,7 +9,10 @@ export function lessonCountLabel(count: number): string {
   return `${count} ${count === 1 ? "lesson" : "lessons"}`;
 }
 
-/** Aligned Library row: subject and title left, count and availability right. */
+/**
+ * One Module in a list panel: subject and title lead, the summary sits
+ * under them, and facts plus the open action align on the right.
+ */
 export function ModuleRow({
   summary,
   headingLevel = "h3",
@@ -18,16 +22,18 @@ export function ModuleRow({
 }) {
   const Heading = headingLevel;
   return (
-    <li className="grid gap-4 border-b border-border py-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <li className="grid gap-4 px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8">
       <div className="min-w-0">
-        <p className="text-meta text-muted-foreground">{summary.subject}</p>
-        <Heading className="text-section font-semibold">{summary.title}</Heading>
-        <p className="mt-1 max-w-[62ch] text-muted-foreground">{summary.summary}</p>
+        <Badge variant="secondary" className="text-muted-foreground">
+          {summary.subject}
+        </Badge>
+        <Heading className="mt-2 text-body font-semibold">{summary.title}</Heading>
+        <p className="mt-1 line-clamp-2 max-w-[62ch] text-meta text-muted-foreground">{summary.summary}</p>
       </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 sm:justify-end">
-        <div className="text-meta text-muted-foreground sm:text-right">
+        <div className="grid gap-1 text-meta text-muted-foreground sm:text-right">
           <p>{lessonCountLabel(summary.lessonCount)}</p>
-          <Availability readyOffline={summary.readyOffline} />
+          <Availability readyOffline={summary.readyOffline} className="sm:justify-end" />
         </div>
         {summary.readyOffline ? (
           <Link

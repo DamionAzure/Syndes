@@ -67,7 +67,7 @@ function ModuleLessons({ found }: { found: Module }) {
 
   return (
     <div>
-      <div className="mx-auto max-w-[82rem]">
+      <div className="mb-6 grid gap-4">
         <ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current={place} />
         {versionReset ? <VersionResetNotice /> : null}
       </div>

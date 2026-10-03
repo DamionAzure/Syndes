@@ -1,15 +1,20 @@
 "use client";
 
+import { Check, LibraryBig } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useModuleProgress } from "@/features/progress/use-progress";
-import { useModuleParam } from "../use-module-param";
+import type { Module } from "../module-types";
 import { hrefForStep, routes } from "../routes";
-import { lessonCountLabel } from "./module-row";
+import { useModuleParam } from "../use-module-param";
+import { Availability } from "./availability";
 import { ModuleBreadcrumb } from "./module-breadcrumb";
+import { lessonCountLabel } from "./module-row";
 import { ModuleNotFound } from "./module-not-found";
 import { VersionResetNotice } from "./version-reset-notice";
-import type { Module } from "../module-types";
 
 export function ModuleOverviewView() {
   const found = useModuleParam();
@@ -20,73 +25,109 @@ export function ModuleOverviewView() {
 function ModuleOverview({ found }: { found: Module }) {
   const { progress, versionReset } = useModuleProgress(found);
   const quizLength = found.quiz?.questions.length ?? 0;
+  const totalMinutes = found.lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
+  const savedLesson = progress?.step.kind === "lesson" ? progress.step.lesson : null;
 
   return (
-    <article className="mx-auto max-w-[56rem]">
-      <ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} />
+    <>
+      <PageHeader
+        icon={LibraryBig}
+        context={<ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} />}
+        title={found.title}
+        description={found.summary}
+        actions={
+          <>
+            {found.flashcards?.length ? (
+              <Link href={routes.flashcards(found.id)} className={buttonVariants({ variant: "outline", size: "lg" })}>
+                Study flashcards
+              </Link>
+            ) : null}
+            {progress && progress.step.kind !== "overview" ? (
+              <Link href={hrefForStep(found.id, progress.step)} className={buttonVariants({ size: "lg" })}>
+                Continue module
+              </Link>
+            ) : (
+              <Link href={routes.lesson(found.id, 1)} className={buttonVariants({ size: "lg" })}>
+                Start module
+              </Link>
+            )}
+          </>
+        }
+      />
       {versionReset ? <VersionResetNotice /> : null}
 
-      <p className="text-meta text-muted-foreground">{found.subject}</p>
-      <h1 className="text-title font-semibold">{found.title}</h1>
-      <p className="mt-3 max-w-[62ch] text-muted-foreground">{found.summary}</p>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+        <Card className="gap-0 pb-0">
+          <CardHeader className="border-b pb-5">
+            <CardTitle id="sequence-heading">Lessons</CardTitle>
+            <CardDescription>
+              {lessonCountLabel(found.lessons.length)}, about {totalMinutes} minutes
+              {quizLength > 0 ? ", then a short quiz" : ""}
+            </CardDescription>
+          </CardHeader>
+          <ol aria-labelledby="sequence-heading" className="divide-y divide-border">
+            {found.lessons.map((lesson, index) => {
+              const number = index + 1;
+              const isSaved = savedLesson === number;
+              return (
+                <li key={lesson.id}>
+                  <Link
+                    href={routes.lesson(found.id, number)}
+                    className="grid min-h-(--control-height) grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 px-6 py-4 hover:bg-surface-muted"
+                  >
+                    <span className="grid size-8 place-content-center rounded-md bg-surface-muted text-meta font-semibold tabular-nums text-muted-foreground">
+                      {number}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-medium">{lesson.title}</span>
+                      {lesson.subtitle ? (
+                        <span className="block truncate text-meta text-muted-foreground">{lesson.subtitle}</span>
+                      ) : null}
+                    </span>
+                    <span className="flex items-center gap-3 text-meta text-muted-foreground">
+                      {isSaved ? <Badge variant="outline">Your place</Badge> : null}
+                      {lesson.minutes} min
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+            {quizLength > 0 ? (
+              <li className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 bg-surface-muted/50 px-6 py-4">
+                <span aria-hidden="true" />
+                <span className="font-medium">Short quiz</span>
+                <span className="text-meta text-muted-foreground">
+                  {quizLength} {quizLength === 1 ? "question" : "questions"}
+                </span>
+              </li>
+            ) : null}
+          </ol>
+        </Card>
 
-      <div className="mt-8 flex flex-wrap gap-4">
-        {progress && progress.step.kind !== "overview" ? (
-          <Link href={hrefForStep(found.id, progress.step)} className={buttonVariants({ size: "lg" })}>
-            Continue module
-          </Link>
-        ) : (
-          <Link href={routes.lesson(found.id, 1)} className={buttonVariants({ size: "lg" })}>
-            Start module
-          </Link>
-        )}
-        {found.flashcards?.length ? (
-          <Link href={routes.flashcards(found.id)} className={buttonVariants({ variant: "outline", size: "lg" })}>
-            Study flashcards
-          </Link>
-        ) : null}
+        <aside aria-label="About this module" className="grid gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle id="outcomes-heading">What you will learn</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul aria-labelledby="outcomes-heading" className="grid gap-3">
+                {found.outcomes.map((outcome) => (
+                  <li key={outcome} className="flex gap-3">
+                    <Check aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" />
+                    <span>{outcome}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+          <Card size="sm">
+            <CardContent className="grid gap-2 text-meta text-muted-foreground">
+              <p className="font-medium text-foreground">{found.subject}</p>
+              <Availability readyOffline={found.readyOffline} />
+            </CardContent>
+          </Card>
+        </aside>
       </div>
-
-      <section aria-labelledby="outcomes-heading" className="mt-12 border-t border-border pt-8">
-        <h2 id="outcomes-heading" className="text-section font-semibold">
-          What you will learn
-        </h2>
-        <ul className="mt-4 grid list-disc gap-2 pl-6">
-          {found.outcomes.map((outcome) => (
-            <li key={outcome}>{outcome}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="sequence-heading" className="mt-12 border-t border-border pt-8">
-        <h2 id="sequence-heading" className="text-section font-semibold">
-          {lessonCountLabel(found.lessons.length)}
-          {quizLength > 0 ? " and a short quiz" : ""}
-        </h2>
-        <ol className="mt-4 border-t border-border">
-          {found.lessons.map((lesson, index) => (
-            <li
-              key={lesson.id}
-              className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-baseline gap-2 border-b border-border py-4"
-            >
-              <span className="text-meta text-muted-foreground tabular-nums">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span>{lesson.title}</span>
-              <span className="text-meta text-muted-foreground">{lesson.minutes} min</span>
-            </li>
-          ))}
-          {quizLength > 0 ? (
-            <li className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-baseline gap-2 border-b border-border py-4">
-              <span aria-hidden="true" />
-              <span>Short quiz</span>
-              <span className="text-meta text-muted-foreground">
-                {quizLength} {quizLength === 1 ? "question" : "questions"}
-              </span>
-            </li>
-          ) : null}
-        </ol>
-      </section>
-    </article>
+    </>
   );
 }

@@ -55,20 +55,24 @@
   --color-input: var(--border);
   --color-ring: var(--focus);
 
-  /* Boxy: straight edges with 2px of relief everywhere. */
-  --radius-sm: var(--radius);
+  /* A small radius hierarchy: controls 6px, panels 12px. Soft, not pill-shaped. */
+  --radius-sm: 4px;
   --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
-  --radius-2xl: var(--radius);
-  --radius-3xl: var(--radius);
-  --radius-4xl: var(--radius);
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 16px;
+  --radius-4xl: 16px;
 }
 
 :root {
-  --radius: 2px;
+  --radius: 6px;
   --control-height: 44px;
+}
 
+/* Also matched by nested previews, so a light swatch stays light inside Dark. */
+:root,
+[data-theme="light"] {
   color-scheme: light;
   --background: #f1f2ed;
   --surface: #fcfcf8;

@@ -1,31 +1,29 @@
 "use client";
 
-import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 
+/** The labelled switch; its heading and description live in the settings row. */
 export function LargerControlsSwitch({
   checked,
   onChange,
+  labelledBy,
+  describedBy,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  labelledBy: string;
+  describedBy: string;
 }) {
   return (
-    <Field orientation="horizontal" className="items-center justify-between gap-6 border-y border-border py-4">
-      <FieldContent>
-        <FieldLabel htmlFor="larger-controls" className="text-section font-semibold">
-          Larger controls
-        </FieldLabel>
-        <FieldDescription id="larger-controls-hint">
-          Makes buttons, fields, and answer rows taller and easier to tap.
-        </FieldDescription>
-      </FieldContent>
+    <label className="flex min-h-(--control-height) cursor-pointer items-center justify-between gap-6 rounded-lg border border-border bg-surface px-4 py-3">
+      <span className="font-medium">{checked ? "On" : "Off"}</span>
       <Switch
         id="larger-controls"
-        aria-describedby="larger-controls-hint"
+        aria-labelledby={labelledBy}
+        aria-describedby={describedBy}
         checked={checked}
         onCheckedChange={onChange}
       />
-    </Field>
+    </label>
   );
 }

@@ -9,12 +9,12 @@ export function ChapterRail({ found, current }: { found: Module; current: number
   const hasQuiz = (found.quiz?.questions.length ?? 0) > 0;
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <div className="border-b border-border pb-4">
+    <div className="grid gap-5">
+      <div>
         <p className="font-semibold">{found.title}</p>
         <p className="text-meta text-muted-foreground">
           {total} {total === 1 ? "lesson" : "lessons"}
-          {hasQuiz ? " / short quiz" : ""}
+          {hasQuiz ? ", then a short quiz" : ""}
         </p>
       </div>
 
@@ -28,11 +28,18 @@ export function ChapterRail({ found, current }: { found: Module; current: number
                 href={routes.lesson(found.id, number)}
                 aria-current={isCurrent ? "step" : undefined}
                 className={cn(
-                  "grid min-h-(--control-height) grid-cols-[2rem_minmax(0,1fr)] items-center rounded-sm border-l-2 border-transparent px-3 text-meta text-muted-foreground hover:text-foreground",
-                  isCurrent && "border-primary bg-background font-semibold text-foreground",
+                  "grid min-h-(--control-height) grid-cols-[1.75rem_minmax(0,1fr)] items-center gap-2 rounded-lg px-2 py-1.5 text-meta text-muted-foreground hover:bg-surface hover:text-foreground",
+                  isCurrent && "bg-surface font-semibold text-foreground",
                 )}
               >
-                <span className="tabular-nums">{String(number).padStart(2, "0")}</span>
+                <span
+                  className={cn(
+                    "grid size-7 place-content-center rounded-md border border-border text-meta tabular-nums",
+                    isCurrent && "border-primary bg-primary text-primary-foreground",
+                  )}
+                >
+                  {number}
+                </span>
                 <span>{lesson.title}</span>
               </Link>
             </li>
@@ -41,9 +48,9 @@ export function ChapterRail({ found, current }: { found: Module; current: number
       </ol>
 
       {hasQuiz ? (
-        <div className="border-t border-border pt-4">
+        <div className="rounded-lg border border-dashed border-border px-3 py-2">
           <p className="text-meta text-muted-foreground">After lesson {total}</p>
-          <p>Short quiz</p>
+          <p className="text-meta font-medium">Short quiz</p>
         </div>
       ) : null}
     </div>

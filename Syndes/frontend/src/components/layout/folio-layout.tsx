@@ -7,25 +7,28 @@ type FolioLayoutProps = {
 };
 
 /**
- * Chapter rail, reading page, and study margin. On wide screens the rail and
- * margin sit outside the 44rem reading measure; below 1024px they stack
- * above and below it, in source order.
+ * Chapter rail, reading page, and study margin in one panel. The rail joins
+ * the page from 1024px and the margin from 1280px; before that they stack
+ * above and below the reader, in source order. Rail and margin stay in view
+ * while a long lesson scrolls.
  */
 export function FolioLayout({ rail, margin, children }: FolioLayoutProps) {
   return (
-    <div className="mx-auto grid max-w-[82rem] border border-border lg:grid-cols-[16rem_minmax(0,44rem)_minmax(14rem,1fr)]">
+    <div className="grid overflow-hidden rounded-xl border border-border bg-surface lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_17rem]">
       <aside
         aria-label="Lesson sequence"
-        className="border-b border-border bg-surface-muted p-6 lg:border-r lg:border-b-0"
+        className="border-b border-border bg-surface-muted p-5 lg:border-r lg:border-b-0"
       >
-        {rail}
+        <div className="lg:sticky lg:top-8">{rail}</div>
       </aside>
-      <div className="bg-surface p-6 sm:p-10">{children}</div>
+      <div className="min-w-0 px-6 py-8 sm:px-10 sm:py-10">
+        <div className="mx-auto max-w-[44rem]">{children}</div>
+      </div>
       <aside
         aria-label="Study margin"
-        className="border-t border-border bg-surface p-6 lg:border-t-0 lg:border-l"
+        className="border-t border-border p-6 lg:col-span-2 xl:col-span-1 xl:border-t-0 xl:border-l"
       >
-        {margin}
+        <div className="xl:sticky xl:top-8">{margin}</div>
       </aside>
     </div>
   );

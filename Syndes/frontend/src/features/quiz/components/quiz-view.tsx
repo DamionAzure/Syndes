@@ -17,7 +17,10 @@ import { markQuizSubmitted, recordAnswer, recordStep } from "@/features/progress
 import { nowIso, updateProgress, useModuleProgress } from "@/features/progress/use-progress";
 import { useQuizScorer } from "../quiz-scorer";
 import { quizNavigation, startingQuestion, unansweredQuestions } from "../quiz-session";
+import { ListChecks } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
 import { ChoiceQuestion } from "./choice-question";
+import { QuestionNavigator } from "./question-navigator";
 import { NoQuiz } from "./no-quiz";
 import { TextQuestion } from "./text-question";
 import { UnansweredSummary } from "./unanswered-summary";
@@ -85,11 +88,17 @@ function QuizSession({ found, quiz }: { found: Module; quiz: Quiz }) {
   const value = answers[question.id] ?? "";
 
   return (
-    <div className="mx-auto max-w-[44rem]">
-      <ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Short quiz" />
+    <>
+      <PageHeader
+        icon={ListChecks}
+        context={<ModuleBreadcrumb moduleId={found.id} moduleTitle={found.title} current="Short quiz" />}
+        title="Short quiz"
+        description={found.title}
+      />
       {versionReset ? <VersionResetNotice /> : null}
 
-      <div className="border border-border bg-surface p-6 sm:p-10">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+      <div className="rounded-xl border border-border bg-surface p-6 sm:p-10">
         <StepProgress current={current} total={total} label={place} className="mb-8 max-w-[20rem]" />
 
         {question.kind === "choice" ? (
@@ -125,6 +134,8 @@ function QuizSession({ found, quiz }: { found: Module; quiz: Quiz }) {
           )}
         </div>
       </div>
-    </div>
+      <QuestionNavigator questions={quiz.questions} answers={answers} current={current} onGoTo={setCurrent} />
+      </div>
+    </>
   );
 }

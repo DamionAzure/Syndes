@@ -1,9 +1,37 @@
+import { Layers, ListChecks, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ModuleSummary } from "@/features/modules/module-types";
 import { routes } from "@/features/modules/routes";
 
-const linkClass =
-  "flex min-h-(--control-height) items-center justify-between gap-4 border-b border-border py-3 hover:text-primary";
+function StudyLink({
+  href,
+  icon: Icon,
+  title,
+  hint,
+}: {
+  href: string;
+  icon: LucideIcon;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className="flex min-h-(--control-height) items-center gap-3 px-6 py-3 hover:bg-surface-muted"
+      >
+        <span aria-hidden="true" className="grid size-9 shrink-0 place-content-center rounded-lg bg-surface-muted text-primary">
+          <Icon className="size-5" />
+        </span>
+        <span className="grid min-w-0">
+          <span className="font-medium">{title}</span>
+          <span className="text-meta text-muted-foreground">{hint}</span>
+        </span>
+      </Link>
+    </li>
+  );
+}
 
 /** Only links to things that exist on this device. */
 export function OtherWaysToStudy({ modules }: { modules: ModuleSummary[] }) {
@@ -12,28 +40,24 @@ export function OtherWaysToStudy({ modules }: { modules: ModuleSummary[] }) {
   if (!hasQuizzes && decks.length === 0) return null;
 
   return (
-    <section aria-labelledby="other-ways-heading">
-      <h2 id="other-ways-heading" className="text-section font-semibold">
-        Other ways to study
-      </h2>
-      <ul className="mt-4 border-t border-border">
+    <Card className="gap-3 pb-3">
+      <CardHeader>
+        <CardTitle id="other-ways-heading">Other ways to study</CardTitle>
+      </CardHeader>
+      <ul aria-labelledby="other-ways-heading" className="grid">
         {hasQuizzes ? (
-          <li>
-            <Link href={routes.quizzes()} className={linkClass}>
-              <span>Quizzes</span>
-              <span className="text-meta text-muted-foreground">Check what you remember</span>
-            </Link>
-          </li>
+          <StudyLink href={routes.quizzes()} icon={ListChecks} title="Quizzes" hint="Check what you remember" />
         ) : null}
         {decks.map((summary) => (
-          <li key={summary.id}>
-            <Link href={routes.flashcards(summary.id)} className={linkClass}>
-              <span>Flashcards: {summary.title}</span>
-              <span className="text-meta text-muted-foreground">Study key ideas</span>
-            </Link>
-          </li>
+          <StudyLink
+            key={summary.id}
+            href={routes.flashcards(summary.id)}
+            icon={Layers}
+            title={`Flashcards: ${summary.title}`}
+            hint="Study key ideas"
+          />
         ))}
       </ul>
-    </section>
+    </Card>
   );
 }

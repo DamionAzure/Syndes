@@ -1,3 +1,4 @@
+import { House } from "lucide-react";
 import type { Metadata } from "next";
 import { LoadingState, LocalDataBoundary } from "@/components/layout/local-data-boundary";
 import { PageHeader } from "@/components/layout/page-header";
@@ -8,13 +9,15 @@ export const metadata: Metadata = { title: { absolute: "Home · Syndes" } };
 
 export default function HomePage() {
   return (
-    <div className="mx-auto max-w-[56rem]">
-      <PageHeader title="Home">
-        Pick up where you left off, or open a module. Everything here works without a connection.
-      </PageHeader>
+    <>
+      <PageHeader
+        icon={House}
+        title="Home"
+        description="Pick up where you left off, or open a module. Everything here works without a connection."
+      />
       <LocalDataBoundary fallback={<LoadingState label="Loading your modules…" />}>
         <HomeView />
       </LocalDataBoundary>
-    </div>
+    </>
   );
 }

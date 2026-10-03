@@ -66,18 +66,18 @@ export function LibraryView() {
     router.replace(pathname, { scroll: false });
   }
 
+  if (modules.length === 0) return <EmptyLibrary />;
+
+  const filtered = query.trim() !== "" || subject !== ALL_SUBJECTS;
+
+  // Filters stay beside the results on wide screens and above them on narrow ones.
   return (
-    <div className="mx-auto max-w-[72rem]">
-      {modules.length === 0 ? (
-        <div className="mt-10">
-          <EmptyLibrary />
-        </div>
-      ) : (
-        <>
-          <div
-            role="search"
-            className="mt-10 grid gap-4 sm:grid-cols-[minmax(0,1fr)_16rem] sm:items-end"
-          >
+    <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start">
+      <div
+        role="search"
+        aria-label="Find a module"
+        className="grid gap-5 rounded-xl border border-border bg-surface p-5 sm:grid-cols-2 lg:sticky lg:top-8 lg:grid-cols-1"
+      >
             <Field>
               <FieldLabel htmlFor="module-search" className="text-meta">
                 Search modules
@@ -113,28 +113,32 @@ export function LibraryView() {
                 </SelectContent>
               </Select>
             </Field>
-          </div>
-
-          <p role="status" className="mt-8 text-meta text-muted-foreground">
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-4 sm:col-span-2 lg:col-span-1">
+          <p role="status" className="text-meta text-muted-foreground">
             {results.length} {results.length === 1 ? "module" : "modules"}
           </p>
+          {filtered ? (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+      </div>
 
-          {results.length === 0 ? (
-            <div className="mt-4 border-y border-border py-8">
-              <h2 className="text-section font-semibold">No modules match</h2>
-              <p className="mt-2 text-muted-foreground">Try another search or subject.</p>
-              <Button variant="outline" className="mt-6" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            </div>
-          ) : (
-            <ul className="mt-2 grid border-t border-border min-[72rem]:grid-cols-2 min-[72rem]:gap-x-10">
-              {results.map((summary) => (
-                <ModuleRow key={summary.id} summary={summary} headingLevel="h2" />
-              ))}
-            </ul>
-          )}
-        </>
+      {results.length === 0 ? (
+        <div className="grid justify-items-center gap-2 rounded-xl border border-dashed border-border bg-surface px-6 py-12 text-center">
+          <h2 className="text-section font-semibold">No modules match</h2>
+          <p className="text-muted-foreground">Try another search or subject.</p>
+          <Button variant="outline" className="mt-4" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        </div>
+      ) : (
+        <ul aria-label="Modules" className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+          {results.map((summary) => (
+            <ModuleRow key={summary.id} summary={summary} headingLevel="h2" />
+          ))}
+        </ul>
       )}
     </div>
   );
