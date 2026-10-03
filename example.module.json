@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "_note": "Hand-authored fixture + demo fallback. The answer_hash/salt values below are PLACEHOLDERS — regenerate them Saturday with the real Rust normalizer+sealer so they match the core exactly. Do NOT ship these placeholder hashes; they will not validate against real scoring.",
+  "module": {
+    "id": "mod_science_photosynthesis_01",
+    "type": "quiz",
+    "title": "Photosynthesis Basics",
+    "subject": "Science",
+    "grade_level": "elementary"
+  },
+  "lesson": {
+    "blocks": [
+      { "kind": "heading",   "text": "What is Photosynthesis?" },
+      { "kind": "paragraph", "text": "Plants make their own food using sunlight, water, and air. This process is called photosynthesis. It happens in the green parts of a plant." },
+      { "kind": "heading",   "text": "Why it matters" },
+      { "kind": "paragraph", "text": "Photosynthesis gives plants energy to grow and puts oxygen into the air that we breathe." }
+    ]
+  },
+  "quiz": {
+    "hash_algo": "SHA-256",
+    "normalization": "lowercase|trim|collapse-ws|strip-punct",
+    "questions": [
+      {
+        "id": "q1",
+        "kind": "multiple_choice",
+        "prompt": "Which gas do plants take in to make food?",
+        "options": ["Oxygen", "Carbon dioxide", "Nitrogen", "Hydrogen"],
+        "salt": "PLACEHOLDER_SALT_q1",
+        "answer_hash": "PLACEHOLDER_HASH_q1",
+        "points": 1
+      },
+      {
+        "id": "q2",
+        "kind": "identification",
+        "prompt": "What is the green pigment in leaves that helps plants catch sunlight?",
+        "salt": "PLACEHOLDER_SALT_q2",
+        "answer_hash": "PLACEHOLDER_HASH_q2",
+        "points": 1
+      },
+      {
+        "id": "q3",
+        "kind": "true_false",
+        "prompt": "Photosynthesis puts oxygen into the air.",
+        "options": ["True", "False"],
+        "salt": "PLACEHOLDER_SALT_q3",
+        "answer_hash": "PLACEHOLDER_HASH_q3",
+        "points": 1
+      }
+    ]
+  }
+}

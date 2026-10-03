@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acassist.local/module.schema.json",
+  "title": "Acassist Module",
+  "description": "The shared module contract (spec 00). A module is one plain JSON file: lesson content, quiz content, or both. Quiz answers ship as salt + answer_hash only — never plaintext.",
+  "type": "object",
+  "required": ["schema_version", "module"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0",
+      "description": "Locked at 1.0 for the event. Bump only on a shape change."
+    },
+    "_note": {
+      "type": "string",
+      "description": "Optional human note (e.g. placeholder-hash warning on the fixture). Ignored by renderers."
+    },
+    "module": {
+      "type": "object",
+      "required": ["id", "type", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Stable unique module id." },
+        "type": {
+          "type": "string",
+          "enum": ["quiz", "lesson"],
+          "description": "Renderer switch. A module may still carry both lesson and quiz content regardless of this hint; sequence lesson -> quiz when both present."
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "subject": { "type": "string" },
+        "grade_level": {
+          "type": "string",
+          "description": "Presentation metadata only — NEVER affects scoring."
+        }
+      }
+    },
+    "lesson": {
+      "type": "object",
+      "required": ["blocks"],
+      "additionalProperties": false,
+      "properties": {
+        "blocks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["kind", "text"],
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": ["heading", "paragraph"],
+                "description": "MUST kinds for the event. Unknown kinds are ROADMAP; renderers ignore unknown kinds safely."
+              },
+              "text": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "quiz": {
+      "type": "object",
+      "required": ["hash_algo", "normalization", "questions"],
+      "additionalProperties": false,
+      "properties": {
+        "hash_algo": {
+          "type": "string",
+          "const": "SHA-256",
+          "description": "The only algorithm for the event."
+        },
+        "normalization": {
+          "type": "string",
+          "const": "lowercase|trim|collapse-ws|strip-punct",
+          "description": "The contract string both seal (teacher) and check (Rust core) obey. Must match the authoritative normalizer."
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/question" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": ["id", "kind", "prompt", "salt", "answer_hash", "points"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable — part of the hash input. Immutable once sealed; never renumber or reuse."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["multiple_choice", "identification", "true_false"]
+        },
+        "prompt": { "type": "string", "minLength": 1 },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required for multiple_choice/true_false (the text that gets hashed). Omitted for identification. Enforced by the allOf rules below."
+        },
+        "salt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Per-question random salt (hex), shipped in the file. Hash input — immutable once sealed."
+        },
+        "answer_hash": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SHA-256(id : normalized_answer : salt), hex. The sealed answer. No plaintext answer anywhere in the file."
+        },
+        "points": { "type": "integer", "minimum": 0 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "enum": ["multiple_choice", "true_false"] } } },
+          "then": { "required": ["options"], "properties": { "options": { "minItems": 2 } } }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "identification" } } },
+          "then": { "not": { "required": ["options"] } }
+        }
+      ]
+    }
+  }
+}
