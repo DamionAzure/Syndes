@@ -159,6 +159,10 @@ pub enum AppError {
     MissingField(String),
     QuestionNotFound(String),
     ValidationError(String),
+    // Teacher-side, online generation failure (spec 03). Any failure in the Groq
+    // path (missing key, network, bad/invalid response) surfaces as this one typed
+    // error so the fallback wiring can decide to serve the pre-generated module.
+    GenerationError(String),
 }
 
 impl std::fmt::Display for AppError {
@@ -170,6 +174,7 @@ impl std::fmt::Display for AppError {
             AppError::MissingField(m) => write!(f, "missing field: {m}"),
             AppError::QuestionNotFound(m) => write!(f, "question not found: {m}"),
             AppError::ValidationError(m) => write!(f, "validation error: {m}"),
+            AppError::GenerationError(m) => write!(f, "generation error: {m}"),
         }
     }
 }

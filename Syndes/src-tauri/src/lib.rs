@@ -3,6 +3,9 @@
 // boundary (spec 01). No network calls anywhere in this crate (spec 04 R5).
 
 mod commands;
+// Teacher-side, ONLINE-ONLY Groq generation (spec 03). Deliberately NOT imported
+// by loader/scoring/module_store - the student/offline path must never reach it.
+mod groq;
 mod loader;
 mod model;
 mod module_store;
@@ -23,6 +26,15 @@ pub use scoring::seal as seal_for_fixture;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Load the teacher-side .env (holds GROQ_API_KEY) so the online generation
+    // path can read it via std::env::var (spec 03). dotenvy searches the current
+    // dir and its parents, which finds Syndes/.env when running from src-tauri/.
+    // Absence is NOT an error: student machines have no .env, and the offline
+    // scoring path never reads the key - generate_module simply falls back to the
+    // bundled fixture when the key is missing (spec 03 R4/R5). dotenvy never
+    // overrides a variable already set in the real environment.
+    let _ = dotenvy::dotenv();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(ModuleStore::default())
@@ -33,6 +45,7 @@ pub fn run() {
             commands::normalize_answer,
             commands::seal_module,
             commands::seal_answer,
+            commands::generate_module,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
