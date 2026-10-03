@@ -221,6 +221,7 @@ impl AuthState {
 /// The trusted check (SPEC B Req 3 shape): load the raw row, then verify. Trusts
 /// ONLY the in-token role returned by `verify_jwt`, never `session.role`. A
 /// missing row is `NoCachedSession` — the first cause in the fixed order.
+#[cfg(test)]
 pub(crate) fn verify_cached_role(
     store: &SessionStore,
     issuer: &str,
@@ -329,7 +330,7 @@ const STUDENT_FLOOR_CTX: AuthContext = AuthContext {
 };
 
 #[cfg(test)]
-mod e2e {
+pub(crate) mod e2e {
     //! End-to-end offline session-cache flow, mirroring the `lib.rs` e2e style:
     //! mint a real RSA-signed token + matching JWKS -> cache it (as a completed
     //! login would) -> resolve offline => OfflineVerified -> use an expired token
@@ -371,12 +372,12 @@ mod e2e {
 
     /// A freshly generated RSA keypair, the signed token, and the JWKS JSON that
     /// contains the matching public key. `kid` ties the token header to the key.
-    struct Minted {
-        token: String,
-        jwks: String,
+    pub(crate) struct Minted {
+        pub(crate) token: String,
+        pub(crate) jwks: String,
     }
 
-    fn mint(role: &str, exp: i64) -> Minted {
+    pub(crate) fn mint(role: &str, exp: i64) -> Minted {
         mint_with_approval(role, true, exp)
     }
 
@@ -430,7 +431,7 @@ mod e2e {
         Minted { token, jwks }
     }
 
-    fn cache(store: &SessionStore, loose_role: &str, token: &str, jwks: &str, exp: i64) {
+    pub(crate) fn cache(store: &SessionStore, loose_role: &str, token: &str, jwks: &str, exp: i64) {
         store
             .store_cached_session(&CachedSession {
                 user_id: "u1".to_string(),

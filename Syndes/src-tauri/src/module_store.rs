@@ -30,6 +30,16 @@ impl ModuleStore {
             .cloned()
             .ok_or_else(|| AppError::ModuleNotFound(module_id.to_string()))
     }
+
+    /// Local-data reset removes only the active Account's loaded content.
+    pub fn clear_account(&self, account_id: &str) -> Result<(), AppError> {
+        let mut guard = self
+            .modules
+            .lock()
+            .map_err(|_| AppError::StorageError("loaded Module store is unavailable".into()))?;
+        guard.retain(|(owner, _), _| owner != account_id);
+        Ok(())
+    }
 }
 
 #[cfg(test)]

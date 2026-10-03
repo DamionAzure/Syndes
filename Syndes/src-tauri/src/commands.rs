@@ -111,6 +111,29 @@ pub fn score_submission(
     })
 }
 
+/// Finish an Account's local-data reset by discarding its loaded Modules.
+/// The webview cannot choose the Account: its identity comes from the signed
+/// native session, and this remains available after approval is revoked.
+#[tauri::command]
+pub fn clear_loaded_modules(
+    store: State<'_, ModuleStore>,
+    auth: State<'_, AuthState>,
+) -> Result<(), AppError> {
+    clear_loaded_modules_for_active_account(&store, &auth)
+}
+
+fn clear_loaded_modules_for_active_account(
+    store: &ModuleStore,
+    state: &AuthState,
+) -> Result<(), AppError> {
+    let account_id = auth::resolve_study_access(state)
+        .account_id
+        .ok_or_else(|| {
+            AppError::Forbidden("a verified Account is required to clear loaded Modules".into())
+        })?;
+    store.clear_account(&account_id)
+}
+
 /// Exposed so the SEAL step (teacher/content lane, spec 03) normalizes through
 /// this exact function instead of a second implementation. One of the three
 /// commands that sees a plaintext answer, and only because the teacher lane
@@ -406,6 +429,36 @@ fn require_learner(state: &AuthState, action: &str) -> Result<String, AppError> 
 mod rbac_tests {
     use super::*;
     use crate::auth::Role;
+
+    #[test]
+    fn local_reset_clears_only_the_verified_accounts_loaded_modules() {
+        struct Offline;
+        impl crate::auth::gate::OnlineGate for Offline {
+            fn recheck(&self, _: &str, _: &str) -> crate::auth::gate::GateOutcome {
+                crate::auth::gate::GateOutcome::Unreachable
+            }
+        }
+        let exp = crate::auth::device_now() + 3600;
+        let minted = crate::auth::e2e::mint("student", exp);
+        let sessions = crate::auth::session_store::SessionStore::open_in_memory().unwrap();
+        crate::auth::e2e::cache(&sessions, "student", &minted.token, &minted.jwks, exp);
+        let auth = AuthState::new(sessions, Box::new(Offline));
+        let module = crate::loader::load_module("../../docs/example.module.json")
+            .or_else(|_| crate::loader::load_module("../../Documents/example.module.json"))
+            .unwrap();
+        let module_id = module.module.id.clone();
+        let loaded = ModuleStore::default();
+        loaded.insert("u1", module.clone());
+        loaded.insert("another-account", module);
+
+        clear_loaded_modules_for_active_account(&loaded, &auth).unwrap();
+
+        assert!(matches!(
+            loaded.get("u1", &module_id),
+            Err(AppError::ModuleNotFound(_))
+        ));
+        assert!(loaded.get("another-account", &module_id).is_ok());
+    }
 
     fn ctx(role: Role, approved: bool, read_only: bool, source: AuthSource) -> AuthContext {
         AuthContext {

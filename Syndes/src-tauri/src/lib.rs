@@ -135,6 +135,7 @@ pub fn run() {
             commands::load_module,
             commands::check_answer,
             commands::score_submission,
+            commands::clear_loaded_modules,
             commands::normalize_answer,
             commands::seal_module,
             commands::seal_answer,
