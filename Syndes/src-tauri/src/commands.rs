@@ -289,3 +289,39 @@ mod tests {
         assert_eq!(resolved.module.id, "mod_generated_live");
     }
 }
+
+// --- Local session cache / offline role verification (SPEC B) -----------------
+//
+// Three commands expose the auth module to the webview, all returning the
+// existing `AppError` shape (an `AuthError` is mapped 1:1 via `From`, keeping the
+// IPC `kind` equal to the originating variant name — SPEC B Req 8.2). The grace
+// fallback lives in `auth::resolve_access`; these commands only route to it.
+
+use crate::auth::{self, AuthContext, AuthState};
+
+/// ONLINE login seam write (Req 2): fetch+cache JWKS, verify, and persist the
+/// session. On any failure nothing is written and a typed error is returned.
+#[tauri::command]
+pub fn auth_online_login(
+    access_token: String,
+    jwks_url: String,
+    state: State<'_, AuthState>,
+) -> Result<AuthContext, AppError> {
+    auth::seam::store_session_online(&state.store, &access_token, &jwks_url).map_err(AppError::from)
+}
+
+/// Resolve the caller's effective access (Req 4, 6): offline verify first, then
+/// the grace fallback (online gate -> Student read-only). Used on app start and
+/// before any privileged action. Infallible by design — it always yields an
+/// AuthContext, at worst the Student read-only floor.
+#[tauri::command]
+pub fn auth_resolve_role(require_privileged: bool, state: State<'_, AuthState>) -> AuthContext {
+    auth::resolve_access(&state, require_privileged)
+}
+
+/// Explicit logout: clear the cached session (Req: session lifecycle). After this
+/// the resolver falls to the Layer 1 floor until the next online login.
+#[tauri::command]
+pub fn auth_logout(state: State<'_, AuthState>) -> Result<(), AppError> {
+    state.store.clear_cached_session().map_err(AppError::from)
+}
