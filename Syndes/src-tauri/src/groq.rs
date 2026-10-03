@@ -148,9 +148,16 @@ pub fn parse_generation_response(http_json: &str) -> Result<DraftModule, AppErro
         })?;
 
     let draft: DraftModule = serde_json::from_str(content).map_err(|e| {
-        // Report the shape failure, not the content: the content carries plaintext
-        // answers and must never be logged (spec 03 R2).
-        AppError::GenerationError(format!("generated content was not a valid draft module: {e}"))
+        // Report the shape failure WITH the top-level key names of the content so
+        // a schema mismatch is diagnosable, but NEVER the values (which carry
+        // plaintext answers, spec 03 R2). Keys are schema field names, not secrets.
+        let shape = serde_json::from_str::<Value>(content)
+            .ok()
+            .and_then(|v| v.as_object().map(|o| o.keys().cloned().collect::<Vec<_>>().join(", ")))
+            .unwrap_or_else(|| "<content was not a JSON object>".to_string());
+        AppError::GenerationError(format!(
+            "generated content was not a valid draft module: {e} (top-level keys: [{shape}])"
+        ))
     })?;
 
     Ok(draft)
@@ -282,27 +289,69 @@ fn call_groq(api_key: &str, body: &Value) -> Result<String, AppError> {
         .map_err(|e| AppError::GenerationError(format!("could not read Groq response: {e}")))?;
 
     if !status.is_success() {
+        // Include Groq's error body for diagnosability. On a non-2xx the body is
+        // Groq's OWN error description (e.g. invalid model, bad request) - the
+        // request never produced a completion, so there is no generated answer
+        // plaintext in it. The API key is never echoed back by Groq. Truncated so
+        // a huge error page can't flood logs.
+        let detail: String = text.chars().take(500).collect();
         return Err(AppError::GenerationError(format!(
-            "Groq returned HTTP {}",
-            status.as_u16()
+            "Groq returned HTTP {}: {}",
+            status.as_u16(),
+            detail
         )));
     }
 
     Ok(text)
 }
 
-/// Orchestrate a generation: read the key from env, build the body, call Groq,
-/// parse + validate the draft. Returns the in-memory DraftModule (with plaintext
-/// answers) for the caller to immediately seal. ONLINE-ONLY, teacher-side.
-pub fn generate_draft(req: GenerationRequest) -> Result<DraftModule, AppError> {
-    // Key comes from the environment ONLY - never hardcoded, never committed.
-    let api_key = require_api_key(std::env::var("GROQ_API_KEY").ok())?;
+/// How many times to attempt a live generation before giving up (and letting the
+/// caller fall back). The LLM intermittently returns malformed or off-shape JSON;
+/// a single retry turns most of those transient misses into a success, observed
+/// directly in the live smoke test. Kept small so a genuinely broken request
+/// (and the credits/latency it costs) doesn't loop.
+const MAX_GENERATION_ATTEMPTS: u32 = 2;
 
-    let body = build_request_body(&req);
-    let raw = call_groq(&api_key, &body)?;
+/// One generation attempt: build the body, call Groq, parse + validate. Separated
+/// from the retry loop so the per-attempt logic stays simple and the loop can
+/// decide whether a given failure is worth retrying.
+fn generate_draft_once(api_key: &str, req: &GenerationRequest) -> Result<DraftModule, AppError> {
+    let body = build_request_body(req);
+    let raw = call_groq(api_key, &body)?;
     let draft = parse_generation_response(&raw)?;
     validate_draft_shape(&draft)?;
     Ok(draft)
+}
+
+/// Orchestrate a generation: read the key from env, then attempt generation up to
+/// MAX_GENERATION_ATTEMPTS times. Returns the in-memory DraftModule (with
+/// plaintext answers) for the caller to immediately seal. ONLINE-ONLY, teacher-side.
+///
+/// Retry policy: the missing-key case is excluded entirely by checking the key
+/// ONCE up front (no number of retries fixes an absent key, and it must surface
+/// fast so the caller falls back). Everything inside an attempt - a transient
+/// network blip or, far more commonly, a parse/shape-validation miss from an LLM
+/// formatting wobble - is retried, because a fresh completion usually fixes it
+/// (confirmed in the live smoke test). Each attempt is an independent completion,
+/// so a retry genuinely re-rolls the model output rather than re-reading a cache.
+pub fn generate_draft(req: GenerationRequest) -> Result<DraftModule, AppError> {
+    // Key comes from the environment ONLY - never hardcoded, never committed.
+    // Checked once up front: if it is missing, no number of retries would help.
+    let api_key = require_api_key(std::env::var("GROQ_API_KEY").ok())?;
+
+    let mut last_err: Option<AppError> = None;
+    for _ in 0..MAX_GENERATION_ATTEMPTS {
+        match generate_draft_once(&api_key, &req) {
+            Ok(draft) => return Ok(draft),
+            Err(err) => last_err = Some(err),
+        }
+    }
+
+    // All attempts failed - return the last error. The command layer turns this
+    // into the guaranteed fallback (spec 03 R4); never a hard failure for the UI.
+    Err(last_err.unwrap_or_else(|| {
+        AppError::GenerationError("generation failed with no recorded error".to_string())
+    }))
 }
 
 #[cfg(test)]
@@ -318,6 +367,12 @@ mod tests {
             num_questions: Some(3),
         }
     }
+
+    // Compile-time guard against the retry loop becoming a silent no-op: with 0
+    // attempts, generate_draft could never call Groq and would always return the
+    // "no recorded error" branch. This fails the build - not just a test - if the
+    // constant is ever set below 1.
+    const _: () = assert!(MAX_GENERATION_ATTEMPTS >= 1);
 
     // A hardcoded, valid Groq chat-completion response whose message content is a
     // JSON string of a valid DraftModule. No network involved.

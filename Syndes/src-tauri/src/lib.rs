@@ -28,6 +28,17 @@ pub use normalize::normalize as normalize_for_fixture;
 #[doc(hidden)]
 pub use scoring::seal as seal_for_fixture;
 
+// Re-exported ONLY for the `live_groq` dev example (cargo run --example
+// live_groq), a toolchain-side smoke test of the real teacher-side generation
+// path WITHOUT the webview/frontend. Not used by any Tauri command; the commands
+// call these through their own private modules.
+#[doc(hidden)]
+pub use groq::{generate_draft as generate_draft_for_smoke, GenerationRequest};
+#[doc(hidden)]
+pub use model::Module as ModuleForSmoke;
+#[doc(hidden)]
+pub use seal::seal_module as seal_module_for_smoke;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Load the teacher-side .env (holds GROQ_API_KEY) so the online generation
