@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets — never commit (holds the Groq API key, spec 03)
+.env
+.env.*
+!.env.example
