@@ -15,7 +15,16 @@ pub struct Module {
     pub quiz: Option<Quiz>,
 }
 
+// Nested sealed-module objects are locked to `additionalProperties: false` in
+// module.schema.json, so we `deny_unknown_fields` here to agree with the schema:
+// a typo'd or stray key under module/lesson/quiz/question is a parse error, not a
+// silently-ignored field. NOTE: the top-level `Module` is intentionally NOT strict
+// — the schema keeps it `additionalProperties: true` for forward-compat (e.g. the
+// top-level `_note` on the fixture), and serde's default (ignore unknown) matches
+// that. Draft* input types are also left permissive: they are a different,
+// pre-seal contract the schema does not govern.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ModuleMeta {
     pub id: String,
     // "type" is a reserved word in Rust, so the field is `module_type` but the JSON
@@ -31,17 +40,20 @@ pub struct ModuleMeta {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Lesson {
     pub blocks: Vec<Block>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Block {
     pub kind: String,
     pub text: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Quiz {
     pub hash_algo: String,
     pub normalization: String,
@@ -49,6 +61,7 @@ pub struct Quiz {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Question {
     pub id: String,
     // Kept as a plain String (not a Rust enum) rather than letting serde reject

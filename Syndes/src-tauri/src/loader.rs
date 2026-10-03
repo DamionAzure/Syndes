@@ -204,4 +204,57 @@ mod tests {
         }
         assert!(matches!(validate(&m), Err(AppError::ValidationError(_))));
     }
+
+    // --- additionalProperties agreement with module.schema.json -----------------
+    // The schema locks module/lesson/quiz/question to additionalProperties:false,
+    // but keeps the TOP LEVEL permissive (additionalProperties:true, e.g. `_note`).
+    // These tests pin that the Rust parser now agrees on both counts.
+
+    /// A top-level unknown key (like the fixture's `_note`) is accepted — the
+    /// top-level object is forward-compatible by design.
+    #[test]
+    fn accepts_unknown_top_level_field() {
+        let json = r#"{
+            "schema_version": "1.0",
+            "_note": "demo fixture note, ignored by the core",
+            "module": { "id": "mod_1", "type": "lesson", "title": "T" }
+        }"#;
+        let module: Module = serde_json::from_str(json).expect("top-level extras are allowed");
+        assert_eq!(module.module.id, "mod_1");
+    }
+
+    /// An unknown key INSIDE `module` is rejected at parse time (deny_unknown_fields),
+    /// matching the schema's additionalProperties:false on that object.
+    #[test]
+    fn rejects_unknown_field_inside_module() {
+        let json = r#"{
+            "schema_version": "1.0",
+            "module": { "id": "mod_1", "type": "lesson", "title": "T", "colour": "blue" }
+        }"#;
+        let parsed: Result<Module, _> = serde_json::from_str(json);
+        assert!(parsed.is_err(), "stray key under `module` must be rejected");
+    }
+
+    /// An unknown key inside a `question` is rejected at parse time.
+    #[test]
+    fn rejects_unknown_field_inside_question() {
+        let json = r#"{
+            "schema_version": "1.0",
+            "module": { "id": "mod_1", "type": "quiz", "title": "T" },
+            "quiz": {
+                "hash_algo": "SHA-256",
+                "normalization": "lowercase|trim|collapse-ws|strip-punct",
+                "questions": [{
+                    "id": "q1", "kind": "identification", "prompt": "p",
+                    "salt": "s", "answer_hash": "h", "points": 1,
+                    "weight": 5
+                }]
+            }
+        }"#;
+        let parsed: Result<Module, _> = serde_json::from_str(json);
+        assert!(
+            parsed.is_err(),
+            "stray key under a question must be rejected"
+        );
+    }
 }
