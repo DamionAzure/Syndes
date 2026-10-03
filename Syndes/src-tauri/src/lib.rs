@@ -85,8 +85,7 @@ pub fn run() {
             // The gate re-check endpoint is Spec A's contract. Read it from the
             // environment; when unset the gate is "unreachable" by construction,
             // so offline-style read-only behaviour applies until it is configured.
-            let recheck_url = std::env::var("SUPABASE_ROLE_RECHECK_URL")
-                .unwrap_or_default();
+            let recheck_url = std::env::var("SUPABASE_ROLE_RECHECK_URL").unwrap_or_default();
             let gate: Box<dyn auth::gate::OnlineGate + Send + Sync> =
                 Box::new(auth::gate::SupabaseGate::new(recheck_url));
 
@@ -99,6 +98,19 @@ pub fn run() {
                     // already migrated and usable regardless.
                     if let Err(e) = store.confirm_app_data_tables() {
                         eprintln!("auth: app-data tables not yet provisioned ({e})");
+                    }
+                    // Cache hygiene: drop any sessions whose token already expired
+                    // so the file does not accumulate dead rows across launches.
+                    // Purely advisory — the verify layer already rejects expired
+                    // tokens — so a failure here is logged, never fatal.
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_secs() as i64)
+                        .unwrap_or(0);
+                    if now > 0 {
+                        if let Err(e) = store.prune_expired(now) {
+                            eprintln!("auth: could not prune expired sessions ({e})");
+                        }
                     }
                     app.manage(auth::AuthState::new(store, gate));
                 }
