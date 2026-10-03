@@ -62,6 +62,7 @@ pub fn run() {
     }
     builder
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .manage(ModuleStore::default())
         // Build the local session cache (SPEC B) in setup, where the app data dir
