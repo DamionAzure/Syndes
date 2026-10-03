@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { LoadingState } from "@/components/layout/local-data-boundary";
 import { canTeach, LEARN_HOME } from "@/lib/access/access";
@@ -18,22 +18,31 @@ type GuardState = "checking" | "allowed" | "denied";
  */
 export function TeachGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [state, setState] = useState<GuardState>("checking");
+  const pathname = usePathname();
+  const [decision, setDecision] = useState<{ pathname: string; state: GuardState }>({ pathname: "", state: "checking" });
 
   useEffect(() => {
     let active = true;
-    void resolveAccess(true).then((context) => {
-      if (!active) return;
-      const allowed = canTeach(context);
-      setState(allowed ? "allowed" : "denied");
-      // Replace, so Back does not return to a page the Learner cannot open.
-      if (!allowed) router.replace(LEARN_HOME);
-    });
+    const check = () => {
+      void resolveAccess(true).then((context) => {
+        if (!active) return;
+        const allowed = canTeach(context);
+        setDecision({ pathname, state: allowed ? "allowed" : "denied" });
+        // Replace, so Back does not return to a page the Learner cannot open.
+        if (!allowed) router.replace(LEARN_HOME);
+      });
+    };
+    check();
+    // Existing local Draft edits can save while offline; on reconnect, recheck
+    // current permission and remove the page if the Account was revoked.
+    window.addEventListener("online", check);
     return () => {
       active = false;
+      window.removeEventListener("online", check);
     };
-  }, [router]);
+  }, [pathname, router]);
 
+  const state = decision.pathname === pathname ? decision.state : "checking";
   if (state === "allowed") return children;
   return (
     <LoadingState

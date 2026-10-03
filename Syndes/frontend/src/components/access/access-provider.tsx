@@ -1,22 +1,23 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { isAuthApiError, type Session } from "@supabase/supabase-js";
 import { canTeach, STUDENT_FLOOR, type AuthContext } from "@/lib/access/access";
 import { resolveAccess } from "@/lib/access/access-bridge";
 import { supabase } from "@/lib/supabase";
 import { setActiveAccountId } from "@/lib/active-account";
+import { completeOAuthCallback, signOutAccount } from "@/features/auth/oauth";
 
 export type AccessState = {
-  /** "checking" until the core has answered; treat it like a Student until then. */
   status: "checking" | "ready";
   context: AuthContext;
   canTeach: boolean;
-  /**
-   * The signed-in Account id (Supabase user id), or null when signed out. Used
-   * ONLY to partition account-scoped local stores (ADR 0007); access decisions
-   * come from `context`, which the Rust core resolves.
-   */
+  /** Verified native Account identity; local stores use this partition only. */
   accountId: string | null;
+  error: string | null;
+  signOut: () => Promise<void>;
 };
 
 const CHECKING: AccessState = {
@@ -24,41 +25,121 @@ const CHECKING: AccessState = {
   context: STUDENT_FLOOR,
   canTeach: false,
   accountId: null,
+  error: null,
+  signOut: async () => {},
 };
 
 const AccessContext = createContext<AccessState>(CHECKING);
 
-/** Resolves the role once per app load, for navigation. Teacher pages check again themselves. */
+function isTerminalAuthError(error: unknown): boolean {
+  return isAuthApiError(error) && error.status >= 400 && error.status < 500 &&
+    error.status !== 408 && error.status !== 429;
+}
+
 export function AccessProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AccessState>(CHECKING);
 
-  useEffect(() => {
-    let active = true;
-    // Resolve the Rust core's access decision and the Supabase account id in
-    // parallel; the id is for store partitioning only, never for access.
-    void Promise.all([resolveAccess(false), supabase.auth.getUser()]).then(
-      ([context, userResult]) => {
-        if (!active) return;
-        const accountId = userResult.data.user?.id ?? null;
-        // Publish to the registry FIRST so account-scoped stores read the right
-        // partition before any component renders against the new state.
-        setActiveAccountId(accountId);
-        setState({ status: "ready", context, canTeach: canTeach(context), accountId });
-      },
-    );
-    return () => {
-      active = false;
-    };
+  const reconcile = useCallback(async (session: Session | null): Promise<AuthContext> => {
+    if (session && isTauri() && navigator.onLine) {
+      try {
+        await invoke("auth_online_login", { accessToken: session.access_token });
+      } catch {
+        // The native core still decides whether an existing offline grant survives.
+      }
+    }
+    const resolved = await resolveAccess(false);
+    // A stale browser session must never select a different native Account's data.
+    return session && resolved.accountId && session.user.id !== resolved.accountId
+      ? STUDENT_FLOOR
+      : resolved;
   }, []);
 
-  return <AccessContext.Provider value={state}>{children}</AccessContext.Provider>;
+  const signOut = useCallback(async () => {
+    await signOutAccount(() => {
+      setActiveAccountId(null);
+      setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, accountId: null, error: null, signOut });
+    });
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    let revision = 0;
+    let terminal = false;
+    const update = async (session: Session | null) => {
+      if (terminal) return;
+      const current = ++revision;
+      try {
+        const context = await reconcile(session);
+        if (!mounted || current !== revision) return;
+        setActiveAccountId(context.accountId);
+        setState({ status: "ready", context, canTeach: canTeach(context), accountId: context.accountId, error: null, signOut });
+      } catch (cause) {
+        if (!mounted || current !== revision) return;
+        setActiveAccountId(null);
+        setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, accountId: null,
+          error: cause instanceof Error ? cause.message : "Account access could not be checked.", signOut });
+      }
+    };
+
+    const sessionResult = async (session: Session | null, error: unknown) => {
+      if (isTerminalAuthError(error)) {
+        terminal = true;
+        ++revision;
+        if (isTauri()) {
+          try { await invoke("auth_logout"); } catch { /* UI still fails closed. */ }
+        }
+        if (!mounted) return;
+        setActiveAccountId(null);
+        setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, accountId: null,
+          error: "Your sign-in has ended. Sign in again to restore this Account's saved work.", signOut });
+        return;
+      }
+      await update(session);
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) terminal = false;
+      // Supabase warns against awaiting another auth method inside this callback.
+      window.setTimeout(() => { void update(session); }, 0);
+    });
+    void supabase.auth.getSession().then(({ data, error }) => sessionResult(data.session, error), () => update(null));
+
+    let unlisten: (() => void) | undefined;
+    if (isTauri()) {
+      const handledUrls = new Set<string>();
+      const handle = async (url: string) => {
+        if (handledUrls.has(url)) return;
+        handledUrls.add(url);
+        try {
+          await completeOAuthCallback(url);
+          terminal = false;
+          const { data } = await supabase.auth.getSession();
+          await update(data.session);
+        } catch (cause) {
+          if (!mounted) return;
+          setState((current) => ({ ...current, error: cause instanceof Error ? cause.message : "Sign in could not finish." }));
+        }
+      };
+      void onOpenUrl((urls) => { for (const url of urls) void handle(url); }).then((stop) => { if (mounted) unlisten = stop; else stop(); }, () => {});
+      void getCurrent().then((urls) => { for (const url of urls ?? []) void handle(url); }, () => {});
+    }
+    const online = () => { void supabase.auth.refreshSession().then(({ data, error }) => sessionResult(data.session, error), () => update(null)); };
+    window.addEventListener("online", online);
+    return () => {
+      mounted = false;
+      authListener.subscription.unsubscribe();
+      unlisten?.();
+      window.removeEventListener("online", online);
+    };
+  }, [reconcile, signOut]);
+
+  return <AccessContext.Provider value={{ ...state, signOut }}>{children}</AccessContext.Provider>;
 }
 
 export function useAccess(): AccessState {
   return useContext(AccessContext);
 }
 
-/** The current Account id for store partitioning, or null when signed out. */
 export function useAccountId(): string | null {
   return useContext(AccessContext).accountId;
 }
