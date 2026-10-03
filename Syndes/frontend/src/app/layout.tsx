@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { AccessProvider } from "@/components/access/access-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { preferenceScript } from "@/features/settings/preference-script";
 import "@/styles/globals.css";
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: preferenceScript }} />
       </head>
       <body>
-        <AppShell>{children}</AppShell>
+        <AccessProvider>
+          <AppShell>{children}</AppShell>
+        </AccessProvider>
       </body>
     </html>
   );
