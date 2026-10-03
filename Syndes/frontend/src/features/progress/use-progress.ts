@@ -50,11 +50,17 @@ export function useModuleProgress(module: ModuleRef | null): {
   const [versionReset] = useState(read.stale);
   const moduleId = module?.id;
 
+  const version = module?.version;
+
   useEffect(() => {
-    if (read.stale && moduleId) {
-      updateProgress((current) => resetModuleProgress(current, moduleId));
-    }
-  }, [read.stale, moduleId]);
+    if (!read.stale || !moduleId || !version) return;
+    // Recheck inside the update so a fresh place saved by the view survives.
+    updateProgress((current) =>
+      readModuleProgress(current, { id: moduleId, version }).stale
+        ? resetModuleProgress(current, moduleId)
+        : current,
+    );
+  }, [read.stale, moduleId, version]);
 
   return { progress: read.progress, versionReset };
 }
