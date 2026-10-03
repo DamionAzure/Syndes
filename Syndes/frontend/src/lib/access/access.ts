@@ -9,6 +9,10 @@ export type Role = "student" | "teacher" | "admin";
 export type AuthSource = "onlineVerified" | "offlineVerified" | "onlineGate" | "studentReadOnly";
 
 export type AuthContext = {
+  /** Verified Supabase user id from the native core, not a webview claim. */
+  accountId: string | null;
+  /** False when the Administrator has revoked the whole Account. */
+  active: boolean;
   role: Role;
   /** Whether an Administrator has approved this Account for learning (ADR 0004/0007). */
   approved: boolean;
@@ -18,6 +22,8 @@ export type AuthContext = {
 
 /** The core's own floor: no verifiable session means Student, read-only, unapproved. */
 export const STUDENT_FLOOR: AuthContext = {
+  accountId: null,
+  active: false,
   role: "student",
   approved: false,
   readOnly: true,
@@ -34,20 +40,24 @@ export function parseAuthContext(raw: unknown): AuthContext {
   const role = ROLES.find((candidate) => candidate === record["role"]);
   const source = SOURCES.find((candidate) => candidate === record["source"]);
   const readOnly = record["readOnly"];
-  if (!role || !source || typeof readOnly !== "boolean") return STUDENT_FLOOR;
+  const accountId = record["accountId"];
+  const active = record["active"];
+  if (!role || !source || typeof readOnly !== "boolean" || typeof active !== "boolean" ||
+      (accountId !== null && (typeof accountId !== "string" || accountId.length === 0))) return STUDENT_FLOOR;
   // Approval must be an explicit boolean; anything else fails closed to false.
   const approved = record["approved"] === true;
-  return { role, approved, readOnly, source };
+  return { accountId, active, role, approved, readOnly, source };
 }
 
 /** Teach is for a verified Teacher or Admin who is not in the read-only floor. */
 export function canTeach(context: AuthContext): boolean {
-  return (context.role === "teacher" || context.role === "admin") && !context.readOnly;
+  return context.active && context.accountId !== null &&
+    (context.role === "teacher" || context.role === "admin") && !context.readOnly;
 }
 
 /** May study: an approved Account not in the read-only floor (ADR 0004/0007). */
 export function canLearn(context: AuthContext): boolean {
-  return context.approved && !context.readOnly;
+  return context.active && context.accountId !== null && context.approved && !context.readOnly;
 }
 
 export const TEACH_PATH = "/teach";

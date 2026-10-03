@@ -3,10 +3,19 @@ import { NAV_GROUPS, visibleGroups } from "@/components/layout/nav-routes";
 import { canLearn, canTeach, isTeachPath, parseAuthContext, STUDENT_FLOOR } from "./access";
 
 describe("parseAuthContext", () => {
+  it("uses the core's verified Account identity and active flag for access", () => {
+    const active = parseAuthContext({ accountId: "account-1", active: true, role: "teacher", approved: false, readOnly: false, source: "onlineGate" });
+    expect(active.accountId).toBe("account-1");
+    expect(canTeach(active)).toBe(true);
+    expect(canLearn(active)).toBe(false);
+    expect(canTeach({ ...active, active: false })).toBe(false);
+  });
   it("reads the core's AuthContext", () => {
     expect(
-      parseAuthContext({ role: "teacher", approved: true, readOnly: false, source: "offlineVerified" }),
+      parseAuthContext({ accountId: "teacher-1", active: true, role: "teacher", approved: true, readOnly: false, source: "offlineVerified" }),
     ).toEqual({
+      accountId: "teacher-1",
+      active: true,
       role: "teacher",
       approved: true,
       readOnly: false,
@@ -37,26 +46,28 @@ describe("parseAuthContext", () => {
 });
 
 describe("canTeach", () => {
+  const account = { accountId: "account-1", active: true } as const;
   it("allows a verified Teacher or Admin", () => {
-    expect(canTeach({ role: "teacher", approved: true, readOnly: false, source: "offlineVerified" })).toBe(true);
-    expect(canTeach({ role: "admin", approved: true, readOnly: false, source: "onlineGate" })).toBe(true);
+    expect(canTeach({ ...account, role: "teacher", approved: true, readOnly: false, source: "offlineVerified" })).toBe(true);
+    expect(canTeach({ ...account, role: "admin", approved: false, readOnly: false, source: "onlineGate" })).toBe(true);
   });
 
   it("refuses Students, the floor, and a read-only Teacher", () => {
-    expect(canTeach({ role: "student", approved: true, readOnly: false, source: "offlineVerified" })).toBe(false);
+    expect(canTeach({ ...account, role: "student", approved: true, readOnly: false, source: "offlineVerified" })).toBe(false);
     expect(canTeach(STUDENT_FLOOR)).toBe(false);
-    expect(canTeach({ role: "teacher", approved: true, readOnly: true, source: "onlineGate" })).toBe(false);
+    expect(canTeach({ ...account, role: "teacher", approved: true, readOnly: true, source: "onlineGate" })).toBe(false);
   });
 });
 
 describe("canLearn", () => {
+  const account = { accountId: "account-1", active: true } as const;
   it("allows an approved Account that is not read-only", () => {
-    expect(canLearn({ role: "student", approved: true, readOnly: false, source: "offlineVerified" })).toBe(true);
-    expect(canLearn({ role: "teacher", approved: true, readOnly: false, source: "offlineVerified" })).toBe(true);
+    expect(canLearn({ ...account, role: "student", approved: true, readOnly: false, source: "offlineVerified" })).toBe(true);
+    expect(canLearn({ ...account, role: "teacher", approved: true, readOnly: false, source: "offlineVerified" })).toBe(true);
   });
 
   it("refuses an unapproved Account and the floor", () => {
-    expect(canLearn({ role: "student", approved: false, readOnly: false, source: "offlineVerified" })).toBe(false);
+    expect(canLearn({ ...account, role: "student", approved: false, readOnly: false, source: "offlineVerified" })).toBe(false);
     expect(canLearn(STUDENT_FLOOR)).toBe(false);
   });
 });
