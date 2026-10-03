@@ -5,7 +5,7 @@
 -- RAISE on unexpected outcomes, so a clean run == all tests passed.
 --
 -- These guard the SECURITY backbone: the sealed-shape trigger (migration 0002)
--- and the RLS policies (migration 0003). No frontend required.
+-- and the current Account RLS policies. No frontend required.
 
 -- ---------------------------------------------------------------------------
 -- Helpers: a known-good sealed module, and a runner that asserts a given write

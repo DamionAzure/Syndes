@@ -11,9 +11,10 @@ process. The client never receives a service-role key or writes access rows.
 - `0001_modules_table.sql` creates the sealed Module store.
 - `0002_sealed_shape_validation.sql` rejects plaintext answers and derives
   browse metadata from the sealed Module.
-- `0003_rls_policies.sql` is the prior claim-based policy.
-- `20261003224618_account_authority.sql` replaces it with current-state policies
-  and the `current_account_access()` RPC. Apply all migrations in filename order
+- `20261003224618_account_authority.sql` replaces the old claim-based policies with current-state policies
+  and the `current_account_access()` RPC. The superseded claim-based `0003`
+  policy file was removed so a later migration run cannot reinstall weaker
+  rules. Apply all remaining migrations in filename order
   to a new project. Existing projects must compare migration history and schema
   before applying a missing migration; an existing table is not proof that its
   earlier migrations were recorded.
@@ -24,8 +25,7 @@ published-read policy allowed anonymous access and `is_approved()` was absent.
 The new authority migration drops those policies and can patch that schema
 directly. Before later use of `supabase db push`, reconcile the already-applied
 legacy SQL files with the remote migration history after verifying their full
-definitions. Do not run `0001` blindly against that project or assume its
-history reflects its schema.
+definitions. Do not assume its history reflects its schema.
 
 The private access table has `account_id` (an `auth.users.id`), `approved`,
 `role` (`Student`, `Teacher`, or `Administrator`), and `active`. Approval grants
