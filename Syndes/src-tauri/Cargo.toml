@@ -31,6 +31,12 @@ regex = "1"
 # CSPRNG for per-question salts at seal time (spec 03/04). getrandom draws from the
 # OS entropy source directly - no seeding, no state to get wrong.
 getrandom = "0.3"
+# HTTP client for the TEACHER-SIDE, ONLINE-ONLY Groq generation path (spec 03 T2/T4).
+# Pinned to an exact 0.12.x. default-features=false + rustls-tls keeps us off the
+# system OpenSSL/native-tls, and the `blocking` client lets the generate command
+# stay synchronous (no tokio runtime pulled into the command boundary). NEVER used
+# on the student/offline scoring path (spec 03 R5).
+reqwest = { version = "=0.12.28", default-features = false, features = ["json", "rustls-tls", "blocking"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

@@ -3,6 +3,9 @@
 // boundary (spec 01). No network calls anywhere in this crate (spec 04 R5).
 
 mod commands;
+// Teacher-side, ONLINE-ONLY Groq generation (spec 03). Deliberately NOT imported
+// by loader/scoring/module_store - the student/offline path must never reach it.
+mod groq;
 mod loader;
 mod model;
 mod module_store;
@@ -33,6 +36,7 @@ pub fn run() {
             commands::normalize_answer,
             commands::seal_module,
             commands::seal_answer,
+            commands::generate_module,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
