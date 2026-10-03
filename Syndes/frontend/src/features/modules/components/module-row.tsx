@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import type { ModuleSummary } from "../module-types";
+import { useModuleSource } from "../module-source";
 import { routes } from "../routes";
 import { Availability } from "./availability";
 
@@ -21,6 +25,21 @@ export function ModuleRow({
   headingLevel?: "h2" | "h3";
 }) {
   const Heading = headingLevel;
+  const source = useModuleSource();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    setError(false);
+    try {
+      await source.downloadModule(summary.id);
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <li className="grid gap-4 px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-8">
       <div className="min-w-0">
@@ -43,8 +62,13 @@ export function ModuleRow({
           >
             Open module
           </Link>
-        ) : null}
+        ) : (
+          <Button variant="outline" onClick={() => void save()} disabled={saving} aria-label={`Save ${summary.title} for offline study`}>
+            {saving ? "Saving…" : "Save offline"}
+          </Button>
+        )}
       </div>
+      {error ? <p role="alert" className="text-meta text-destructive sm:col-span-2">Could not save this Module. Check your connection and try again.</p> : null}
     </li>
   );
 }

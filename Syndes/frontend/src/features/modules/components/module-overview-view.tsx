@@ -47,8 +47,8 @@ function ModuleOverview({ found }: { found: Module }) {
                 Continue module
               </Link>
             ) : (
-              <Link href={routes.lesson(found.id, 1)} className={buttonVariants({ size: "lg" })}>
-                Start module
+              <Link href={found.lessons.length ? routes.lesson(found.id, 1) : routes.quiz(found.id)} className={buttonVariants({ size: "lg" })}>
+                {found.lessons.length ? "Start module" : "Start quiz"}
               </Link>
             )}
           </>
@@ -57,7 +57,7 @@ function ModuleOverview({ found }: { found: Module }) {
       {versionReset ? <VersionResetNotice /> : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-        <Card className="gap-0 pb-0">
+        {found.lessons.length > 0 ? <Card className="gap-0 pb-0">
           <CardHeader className="border-b pb-5">
             <CardTitle id="sequence-heading">Lessons</CardTitle>
             <CardDescription>
@@ -102,10 +102,10 @@ function ModuleOverview({ found }: { found: Module }) {
               </li>
             ) : null}
           </ol>
-        </Card>
+        </Card> : null}
 
         <aside aria-label="About this module" className="grid gap-6">
-          <Card>
+          {found.outcomes.length > 0 ? <Card>
             <CardHeader>
               <CardTitle id="outcomes-heading">What you will learn</CardTitle>
             </CardHeader>
@@ -119,7 +119,7 @@ function ModuleOverview({ found }: { found: Module }) {
                 ))}
               </ul>
             </CardContent>
-          </Card>
+          </Card> : null}
           <Card size="sm">
             <CardContent className="grid gap-2 text-meta text-muted-foreground">
               <p className="font-medium text-foreground">{found.subject}</p>

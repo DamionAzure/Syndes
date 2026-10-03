@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useModuleSource } from "../module-source";
@@ -14,11 +14,12 @@ export function OpenModuleFile({ variant = "outline" }: { variant?: "default" | 
   const router = useRouter();
   const [notice, setNotice] = useState<Notice>(null);
   const [opening, setOpening] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  async function openFile() {
+  async function openFile(file: File) {
     setOpening(true);
     setNotice(null);
-    const result = await source.openModuleFile();
+    const result = await source.openModuleFile(file);
     setOpening(false);
     switch (result.status) {
       case "opened":
@@ -41,7 +42,19 @@ export function OpenModuleFile({ variant = "outline" }: { variant?: "default" | 
   return (
     <div className="grid gap-4">
       <div>
-        <Button variant={variant} onClick={openFile} disabled={opening}>
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".json,application/json"
+          className="sr-only"
+          aria-label="Choose a Module file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) void openFile(file);
+            event.target.value = "";
+          }}
+        />
+        <Button variant={variant} onClick={() => inputRef.current?.click()} disabled={opening}>
           {opening ? "Opening module file…" : "Open module file"}
         </Button>
       </div>

@@ -7,6 +7,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { writeTextFile, mkdir, BaseDirectory } from "@tauri-apps/plugin-fs";
 import { supabase } from "./supabase";
+import { canTeach } from "./access/access";
+import { resolveAccess } from "./access/access-bridge";
 import type { ListFilter, Module, ModuleSummary } from "./types";
 
 // Row shape as stored/returned by the `modules` table. Only `data` + `published`
@@ -31,7 +33,14 @@ type SummaryRow = Omit<ModuleSummary, "published_at"> & { created_at: string };
  * server-side sealed-shape trigger is the backstop and surfaces rejections here.
  */
 export async function publishModule(sealed: Module): Promise<void> {
+  const access = await resolveAccess(true);
+  if (!canTeach(access) || access.source !== "onlineGate") {
+    throw new Error("Teacher access must be verified online before publishing.");
+  }
   const { data: auth } = await supabase.auth.getUser(); // teacher must be signed in
+  if (!auth.user || !("accountId" in access) || access.accountId !== auth.user.id) {
+    throw new Error("Teacher access does not match the signed-in Account.");
+  }
   const row: ModuleRow = {
     data: sealed,
     owner: auth.user?.id ?? null,

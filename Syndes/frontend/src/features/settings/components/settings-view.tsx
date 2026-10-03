@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useAccess } from "@/components/access/access-provider";
+import { ResetProgressDialog } from "@/features/progress/components/reset-progress-dialog";
+import { resetLocalAccountData } from "../legacy-import";
 import { applyPreferences, savePreferences, usePreferences } from "../preferences";
 import { LargerControlsSwitch } from "./larger-controls-switch";
 import { ThemeChoice } from "./theme-choice";
+import { LegacyImport } from "./legacy-import";
 
 /** What the setting is on the left, the control on the right. */
 function SettingRow({
@@ -37,6 +41,8 @@ function SettingRow({
 
 export function SettingsView() {
   const preferences = usePreferences();
+  const access = useAccess();
+  const [resetError, setResetError] = useState(false);
 
   // Keep <html> in step when another tab changes the saved preferences.
   useEffect(() => {
@@ -64,6 +70,23 @@ export function SettingsView() {
           onChange={(largerControls) => savePreferences({ ...preferences, largerControls })}
         />
       </SettingRow>
+      <LegacyImport kind="progress" />
+      {access.accountId ? (
+        <SettingRow id="local-data" title="Local Account data" description="Remove this Account's offline Modules, Progress, answers and Drafts from this device. Other Accounts remain here.">
+          <ResetProgressDialog
+            triggerLabel="Reset local Account data"
+            title="Remove this Account's local data?"
+            description="Offline Modules, Progress, answers and Drafts for this Account will be deleted from this device. This cannot be undone."
+            confirmLabel="Remove local data"
+            focusAfterResetId="main-content"
+            onConfirm={() => {
+              if (!access.accountId) return;
+              void resetLocalAccountData(window.localStorage, access.accountId).catch(() => setResetError(true));
+            }}
+          />
+          {resetError ? <p role="alert" className="mt-2 text-meta text-destructive">Local data could not be removed. Try again.</p> : null}
+        </SettingRow>
+      ) : null}
     </div>
   );
 }

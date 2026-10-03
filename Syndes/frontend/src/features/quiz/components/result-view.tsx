@@ -125,9 +125,11 @@ function QuizResult({
         description={found.title}
         actions={
           <>
-            <Link href={routes.lesson(found.id, 1)} className={buttonVariants({ variant: "outline" })}>
-              Review lesson
-            </Link>
+            {found.lessons.length > 0 ? (
+              <Link href={routes.lesson(found.id, 1)} className={buttonVariants({ variant: "outline" })}>
+                Review lesson
+              </Link>
+            ) : null}
             <Button onClick={retry}>Retry</Button>
           </>
         }
