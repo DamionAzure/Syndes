@@ -8,7 +8,8 @@
 -- so a client cannot desync the columns from `data`.
 --
 -- Security backbone lives in later migrations: 0002 adds the sealed-shape
--- validation trigger (the no-plaintext backstop) and 0003 adds RLS policies.
+-- validation trigger (the no-plaintext backstop); the Account authority
+-- migration adds current-state RLS policies.
 -- Requirements: 1.1, 1.2, 8.1, 11.6
 
 create table if not exists public.modules (
