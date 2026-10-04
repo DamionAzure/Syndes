@@ -1,6 +1,6 @@
 # Teacher area uses sample class records
 
-Status: accepted for the MVP. Real Learner reporting still needs a separate privacy and access design.
+Status: proposed for sample class records. The MVP access boundary is implemented; real Learner reporting still needs a separate privacy and access design.
 
 The Teacher area (`/teach`) covers authoring Drafts and reading class records: Learners, Scores, Grades and the Schedule. Learner Results do not reach a Teacher because Progress stays on each Learner's device. Signed-in Teacher and Administrator access is governed by ADR-0004 and ADR-0006.
 
