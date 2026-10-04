@@ -9,10 +9,10 @@ import type { ModuleDraft } from "../draft-types";
 import { toDraftModuleFile } from "../module-file";
 
 const OUTCOME_TEXT: Record<SealOutcome["status"], string> = {
-  sealed: "Sealed. Share the module file with your Learners.",
+  published: "Sealed and published. Approved Learners can find this Module.",
   unsupported:
-    "Sealing runs in the Syndes desktop app, which is not connected here yet. Your draft stays saved on this device.",
-  invalid: "The module file was not accepted.",
+    "Sealing and publishing require the Syndes desktop app. Your Draft stays saved on this device.",
+  invalid: "This Draft was not published.",
 };
 
 /**
@@ -49,7 +49,7 @@ export function SealPanel({
           Before you seal
         </h2>
         <p className="text-meta text-muted-foreground">
-          Sealing turns this draft into the module file Learners open. Answers are locked in as checks, not text.
+          Sealing turns this Draft into a Module. Answers are locked in as checks before the Module is published.
         </p>
       </div>
 
@@ -82,10 +82,10 @@ export function SealPanel({
 
       <div className="grid gap-2">
         <Button onClick={seal} disabled={!ready || sealing} aria-describedby="seal-note">
-          {sealing ? "Sealing…" : "Seal and export"}
+          {sealing ? "Sealing and publishing…" : "Seal and publish"}
         </Button>
         <p id="seal-note" className="text-meta text-muted-foreground">
-          {ready ? "You can keep editing after sealing; seal again to share changes." : "Fix the items above to seal."}
+          {ready ? "You can keep editing after publishing; seal and publish again to share changes." : "Fix the items above to seal."}
         </p>
         {outcome ? (
           <p role="status" className="rounded-lg border border-border bg-surface-muted px-3 py-2 text-meta">

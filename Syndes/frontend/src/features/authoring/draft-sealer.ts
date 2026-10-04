@@ -1,25 +1,35 @@
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { publishModule } from "@/lib/moduleStore";
+import type { Module } from "@/lib/types";
 import type { DraftModuleFile } from "./module-file";
 
 export type SealOutcome =
-  | { status: "sealed"; fileName: string }
+  | { status: "published" }
   /** Sealing runs in the Rust core, which this runtime cannot reach. */
   | { status: "unsupported" }
   | { status: "invalid"; message: string };
 
 /**
- * Seals a draft into a shareable Module file: plaintext answers become salted
- * hashes in the Rust core (`seal_module`), never in the browser.
+ * Seals a Draft in the Rust core, then publishes only the sealed Module.
  */
 export interface DraftSealer {
   seal(file: DraftModuleFile): Promise<SealOutcome>;
 }
 
-const unavailableSealer: DraftSealer = {
-  seal: async () => ({ status: "unsupported" }),
+const activeSealer: DraftSealer = {
+  async seal(file) {
+    if (!isTauri()) return { status: "unsupported" };
+    try {
+      // Native sealing checks Teacher permission online before touching the
+      // plaintext Draft. Publishing checks it again at the Supabase boundary.
+      const sealed = await invoke<Module>("seal_module", { draft: file });
+      await publishModule(sealed);
+      return { status: "published" };
+    } catch (error) {
+      return { status: "invalid", message: error instanceof Error ? error.message : String(error) };
+    }
+  },
 };
-
-/** The one place the active sealer is chosen; the Tauri bridge replaces it here. */
-const activeSealer: DraftSealer = unavailableSealer;
 
 export function useDraftSealer(): DraftSealer {
   return activeSealer;

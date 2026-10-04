@@ -8,11 +8,11 @@ import { canTeach } from "./access/access";
 import { resolveAccess } from "./access/access-bridge";
 import type { ListFilter, Module, ModuleSummary } from "./types";
 
-// Row shape as stored/returned by the `modules` table. Only `data` + `published`
-// (+ owner) are ever written by the client; the metadata columns are derived
+// Row shape as stored/returned by the `modules` table. The metadata columns are derived
 // server-side by the validation trigger (migration 0002), so they are read-only
 // projections here.
 interface ModuleRow {
+  id: string;
   data: Module;
   owner: string | null;
   published: boolean;
@@ -39,11 +39,14 @@ export async function publishModule(sealed: Module): Promise<void> {
     throw new Error("Teacher access does not match the signed-in Account.");
   }
   const row: ModuleRow = {
+    id: sealed.module.id,
     data: sealed,
-    owner: auth.user?.id ?? null,
+    owner: auth.user.id,
     published: true,
   };
-  const { error } = await supabase.from("modules").insert(row);
+  // A Draft keeps its Module ID across edits. The conflict path is guarded by
+  // modules_update_own RLS, so a Teacher cannot replace someone else's Module.
+  const { error } = await supabase.from("modules").upsert(row, { onConflict: "id" });
   if (error) throw error; // trigger rejections (unsealed/plaintext/contract) surface here
 }
 
