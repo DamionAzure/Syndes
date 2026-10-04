@@ -68,20 +68,18 @@ pub struct VerifiedClaims {
     pub exp: i64,
 }
 
-/// Where a resolved access decision came from — its provenance. The UI scopes
-/// itself by `role`/`read_only`; `source` explains why. camelCase at the IPC
-/// boundary to match the existing command payload convention (spec 01).
+/// Where a resolved access decision came from. The UI permits Teacher pages
+/// only for a fresh `OnlineGate` decision. camelCase at the IPC boundary.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum AuthSource {
-    /// Layer 2 at login time: token verified against freshly fetched keys.
+    /// Token verified against freshly fetched keys at login time.
     OnlineVerified,
-    /// Layer 2 at app start / privileged action: token verified offline.
+    /// Token verified offline for local learning.
     OfflineVerified,
-    /// Layer 1 fallback: the online gate re-confirmed the role.
+    /// The live Account RPC confirmed current access.
     OnlineGate,
-    /// The floor: offline and unverifiable => Student read-only, "Connect to
-    /// continue".
+    /// No usable local grant.
     StudentReadOnly,
 }
 
