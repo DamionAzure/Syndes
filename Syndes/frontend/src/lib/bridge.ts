@@ -11,7 +11,7 @@
 // check_answer/score_submission (owned by the quiz scorer).
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { parseAuthContext, type AuthContext } from "./access/access";
+import { parseAuthContext, type AuthContext, type Role } from "./access/access";
 import type { Module } from "./types";
 
 /**
@@ -210,4 +210,30 @@ export async function authOnlineLogin(accessToken: string, jwksUrl: string): Pro
 export async function authLogout(): Promise<void> {
   if (!isTauri()) throw new BridgeUnavailableError("auth_logout");
   await invoke<unknown>("auth_logout");
+}
+
+// --- Demo sign-in (debug builds of the core only) -------------------------------
+// Faux sign-in until the real Supabase sign-in screen exists. The core compiles
+// it only into debug builds; a release core reports `false` and refuses.
+
+/** `auth_demo_available() -> bool`. False outside Tauri or in a release build. */
+export async function demoSignInAvailable(): Promise<boolean> {
+  if (!isTauri()) return false;
+  try {
+    return (await invoke<unknown>("auth_demo_available")) === true;
+  } catch {
+    return false;
+  }
+}
+
+/** `auth_demo_sign_in(role) -> AuthContext`. Debug builds only. */
+export async function demoSignIn(role: Role): Promise<AuthContext> {
+  if (!isTauri()) throw new BridgeUnavailableError("auth_demo_sign_in");
+  return parseAuthContext(await invoke<unknown>("auth_demo_sign_in", { role }));
+}
+
+/** `auth_demo_sign_out() -> ()`. Debug builds only. */
+export async function demoSignOut(): Promise<void> {
+  if (!isTauri()) throw new BridgeUnavailableError("auth_demo_sign_out");
+  await invoke<unknown>("auth_demo_sign_out");
 }

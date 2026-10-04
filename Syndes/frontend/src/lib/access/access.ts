@@ -6,7 +6,11 @@
 
 export type Role = "student" | "teacher" | "admin";
 
-export type AuthSource = "onlineVerified" | "offlineVerified" | "onlineGate" | "studentReadOnly";
+/**
+ * `demo` comes only from the demo sign-in, which exists in debug builds of the
+ * core alone (auth::demo). It is never a verified sign-in.
+ */
+export type AuthSource = "onlineVerified" | "offlineVerified" | "onlineGate" | "studentReadOnly" | "demo";
 
 export type AuthContext = { role: Role; readOnly: boolean; source: AuthSource };
 
@@ -14,7 +18,7 @@ export type AuthContext = { role: Role; readOnly: boolean; source: AuthSource };
 export const STUDENT_FLOOR: AuthContext = { role: "student", readOnly: true, source: "studentReadOnly" };
 
 const ROLES: readonly Role[] = ["student", "teacher", "admin"];
-const SOURCES: readonly AuthSource[] = ["onlineVerified", "offlineVerified", "onlineGate", "studentReadOnly"];
+const SOURCES: readonly AuthSource[] = ["onlineVerified", "offlineVerified", "onlineGate", "studentReadOnly", "demo"];
 
 /** IPC payloads are untrusted shapes: anything unexpected becomes the Student floor. */
 export function parseAuthContext(raw: unknown): AuthContext {

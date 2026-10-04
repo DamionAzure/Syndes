@@ -332,7 +332,62 @@ pub fn auth_resolve_role(require_privileged: bool, state: State<'_, AuthState>) 
 /// the resolver falls to the Layer 1 floor until the next online login.
 #[tauri::command]
 pub fn auth_logout(state: State<'_, AuthState>) -> Result<(), AppError> {
+    #[cfg(debug_assertions)]
+    auth::demo::set_role(&state, None);
     state.store.clear_cached_session().map_err(AppError::from)
+}
+
+// --- Demo sign-in (DEBUG BUILDS ONLY) ------------------------------------------
+//
+// Faux sign-in for demos until the real Supabase sign-in screen exists. The
+// commands are always registered (so the handler list is the same in every
+// build), but in a release build they refuse with `Forbidden` and
+// `auth_demo_available` reports false. See `auth::demo`.
+
+/// Whether this build offers the demo sign-in. The webview shows the demo panel
+/// only when this is true.
+#[tauri::command]
+pub fn auth_demo_available() -> bool {
+    cfg!(debug_assertions)
+}
+
+/// Act as `role` ("student" | "teacher" | "admin") until sign-out or restart.
+/// Anything else is rejected, so a typo can never widen access.
+#[tauri::command]
+pub fn auth_demo_sign_in(
+    role: String,
+    state: State<'_, AuthState>,
+) -> Result<AuthContext, AppError> {
+    #[cfg(debug_assertions)]
+    {
+        let role = Role::from_claim(&role).map_err(AppError::from)?;
+        auth::demo::set_role(&state, Some(role));
+        Ok(auth::resolve_access(&state, false))
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = (role, state);
+        Err(AppError::Forbidden(
+            "demo sign-in is only available in development builds".to_string(),
+        ))
+    }
+}
+
+/// Drop the demo role; access falls back to the normal resolver.
+#[tauri::command]
+pub fn auth_demo_sign_out(state: State<'_, AuthState>) -> Result<(), AppError> {
+    #[cfg(debug_assertions)]
+    {
+        auth::demo::set_role(&state, None);
+        Ok(())
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = state;
+        Err(AppError::Forbidden(
+            "demo sign-in is only available in development builds".to_string(),
+        ))
+    }
 }
 
 // --- Role-based authorization for teacher commands (RBAC) ---------------------

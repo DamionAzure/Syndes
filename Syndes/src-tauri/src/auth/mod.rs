@@ -98,6 +98,14 @@ pub enum AuthSource {
     /// The floor: offline and unverifiable => Student read-only, "Connect to
     /// continue".
     StudentReadOnly,
+    /// DEMO ONLY: a role picked on the demo sign-in screen, with no token behind
+    /// it. Only debug builds can produce this (see `demo` below); a release build
+    /// never constructs it. Labelled separately so nothing mistakes it for a
+    /// verified sign-in.
+    // Never constructed in release builds, by design: that is the proof the demo
+    // path is compiled out.
+    #[cfg_attr(not(debug_assertions), allow(dead_code))]
+    Demo,
 }
 
 /// What a resolved access decision looks like to the UI.
@@ -191,11 +199,44 @@ use crate::auth::session_store::SessionStore;
 pub struct AuthState {
     pub store: SessionStore,
     pub gate: Box<dyn OnlineGate + Send + Sync>,
+    /// DEMO ONLY (debug builds): the role chosen on the demo sign-in screen.
+    /// In memory, never persisted, gone on restart. Absent from release builds.
+    #[cfg(debug_assertions)]
+    demo_role: std::sync::Mutex<Option<Role>>,
 }
 
 impl AuthState {
     pub fn new(store: SessionStore, gate: Box<dyn OnlineGate + Send + Sync>) -> AuthState {
-        AuthState { store, gate }
+        AuthState {
+            store,
+            gate,
+            #[cfg(debug_assertions)]
+            demo_role: std::sync::Mutex::new(None),
+        }
+    }
+}
+
+// --- Demo sign-in (DEBUG BUILDS ONLY) -------------------------------------------
+//
+// A faux sign-in for demos and local testing, since the real Supabase sign-in
+// screen is not built yet. It is compiled ONLY when `debug_assertions` is on
+// (`tauri dev`, debug APKs). A release build (`tauri build`) contains none of it:
+// `resolve_access` has no demo branch and the demo commands refuse.
+#[cfg(debug_assertions)]
+pub mod demo {
+    use super::{AuthState, Role};
+
+    /// Pick (Some) or clear (None) the demo role. A poisoned lock clears the role,
+    /// so a failure here can only ever drop access, never grant it.
+    pub fn set_role(state: &AuthState, role: Option<Role>) {
+        match state.demo_role.lock() {
+            Ok(mut guard) => *guard = role,
+            Err(poisoned) => *poisoned.into_inner() = None,
+        }
+    }
+
+    pub(super) fn role(state: &AuthState) -> Option<Role> {
+        state.demo_role.lock().ok().and_then(|guard| *guard)
     }
 }
 
@@ -224,6 +265,17 @@ pub(crate) fn verify_cached_role(store: &SessionStore) -> Result<VerifiedClaims,
 ///
 /// Never returns a role sourced from the loose column (Req 4.4, 6.4).
 pub fn resolve_access(state: &AuthState, require_privileged: bool) -> AuthContext {
+    // --- DEMO (debug builds only): a role picked on the demo sign-in screen ---
+    // Compiled out of release builds entirely. Labelled `Demo`, never `*Verified`.
+    #[cfg(debug_assertions)]
+    if let Some(role) = demo::role(state) {
+        return AuthContext {
+            role,
+            read_only: false,
+            source: AuthSource::Demo,
+        };
+    }
+
     // --- Layer 2: offline JWT verify (trusted) ---
     if let Ok(claims) = verify_cached_role(&state.store) {
         return AuthContext {
@@ -584,5 +636,59 @@ mod e2e {
         let ctx = resolve_access(&state, true);
         assert_eq!(ctx.source, AuthSource::OnlineGate);
         assert_eq!(ctx.role, Role::Teacher);
+    }
+}
+
+// Demo sign-in (debug builds only). Tests always compile with debug_assertions,
+// so these exercise the demo branch of `resolve_access`.
+#[cfg(test)]
+mod demo_tests {
+    use super::*;
+
+    struct Unreachable;
+    impl OnlineGate for Unreachable {
+        fn recheck(&self, _access_token: &str) -> GateOutcome {
+            GateOutcome::Unreachable
+        }
+    }
+
+    fn fresh_state() -> AuthState {
+        AuthState::new(
+            SessionStore::open_in_memory().unwrap(),
+            Box::new(Unreachable),
+        )
+    }
+
+    #[test]
+    fn no_demo_role_is_the_student_floor() {
+        let ctx = resolve_access(&fresh_state(), true);
+        assert_eq!(ctx.role, Role::Student);
+        assert!(ctx.read_only);
+        assert_eq!(ctx.source, AuthSource::StudentReadOnly);
+    }
+
+    #[test]
+    fn demo_teacher_is_labelled_demo_not_verified() {
+        let state = fresh_state();
+        demo::set_role(&state, Some(Role::Teacher));
+        let ctx = resolve_access(&state, true);
+        assert_eq!(ctx.role, Role::Teacher);
+        assert!(!ctx.read_only);
+        assert_eq!(ctx.source, AuthSource::Demo);
+    }
+
+    #[test]
+    fn clearing_the_demo_role_drops_back_to_the_floor() {
+        let state = fresh_state();
+        demo::set_role(&state, Some(Role::Admin));
+        demo::set_role(&state, None);
+        let ctx = resolve_access(&state, true);
+        assert_eq!(ctx.role, Role::Student);
+        assert_eq!(ctx.source, AuthSource::StudentReadOnly);
+    }
+
+    #[test]
+    fn an_unknown_role_string_is_refused() {
+        assert!(Role::from_claim("superuser").is_err());
     }
 }

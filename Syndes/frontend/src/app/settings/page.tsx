@@ -1,6 +1,7 @@
 import { Settings2 } from "lucide-react";
 import type { Metadata } from "next";
 import { LoadingState, LocalDataBoundary } from "@/components/layout/local-data-boundary";
+import { DemoSignIn } from "@/components/access/demo-sign-in";
 import { PageHeader } from "@/components/layout/page-header";
 import { SettingsView } from "@/features/settings/components/settings-view";
 
@@ -10,6 +11,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader icon={Settings2} title="Settings" description="How Syndes looks and feels. Saved on this device." />
+      <DemoSignIn />
       <LocalDataBoundary fallback={<LoadingState label="Loading settings…" />}>
         <SettingsView />
       </LocalDataBoundary>
