@@ -5,7 +5,7 @@
 -- RAISE on unexpected outcomes, so a clean run == all tests passed.
 --
 -- These guard the SECURITY backbone: the sealed-shape trigger (migration 0002)
--- and the RLS policies (migration 0003). No frontend required.
+-- and the current Account RLS policies. No frontend required.
 
 -- ---------------------------------------------------------------------------
 -- Helpers: a known-good sealed module, and a runner that asserts a given write
@@ -147,5 +147,22 @@ begin
   end if;
 
   raise notice 'ok: RLS enabled with % policies', n_policies;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- ADR 0004/0007 — current Account state is server-controlled. Claim snapshots
+-- are deliberately not authority. The role/approval matrix is exercised in
+-- 0002_account_authority.test.sql.
+-- ---------------------------------------------------------------------------
+do $$
+begin
+  if not exists (
+    select 1 from pg_class
+    where oid = 'app_private.account_access'::regclass and relrowsecurity
+  ) then
+    raise exception 'TEST FAILED: Account authority table lacks RLS';
+  end if;
+  raise notice 'ok: Account authority table has RLS';
 end;
 $$;

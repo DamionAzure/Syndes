@@ -18,9 +18,14 @@ use tauri::State;
 /// module as-is for the UI to render. Hashes/salts travel back to JS because
 /// they are already in the file (not secret) - the UI just treats them as opaque.
 #[tauri::command]
-pub fn load_module(path: String, store: State<'_, ModuleStore>) -> Result<Module, AppError> {
+pub fn load_module(
+    path: String,
+    store: State<'_, ModuleStore>,
+    auth: State<'_, AuthState>,
+) -> Result<Module, AppError> {
+    let account_id = require_learner(&auth, "load a module")?;
     let module = loader::load_module(&path)?;
-    store.insert(module.clone());
+    store.insert(&account_id, module.clone());
     Ok(module)
 }
 
@@ -33,8 +38,10 @@ pub fn check_answer(
     question_id: String,
     raw_answer: String,
     store: State<'_, ModuleStore>,
+    auth: State<'_, AuthState>,
 ) -> Result<CheckResult, AppError> {
-    let module = store.get(&module_id)?;
+    let account_id = require_learner(&auth, "check an answer")?;
+    let module = store.get(&account_id, &module_id)?;
     let quiz = module
         .quiz
         .as_ref()
@@ -61,8 +68,10 @@ pub fn score_submission(
     module_id: String,
     answers: Vec<Answer>,
     store: State<'_, ModuleStore>,
+    auth: State<'_, AuthState>,
 ) -> Result<ScoreResult, AppError> {
-    let module = store.get(&module_id)?;
+    let account_id = require_learner(&auth, "score a submission")?;
+    let module = store.get(&account_id, &module_id)?;
     let quiz = module
         .quiz
         .as_ref()
@@ -100,6 +109,29 @@ pub fn score_submission(
         points_possible,
         per_question,
     })
+}
+
+/// Finish an Account's local-data reset by discarding its loaded Modules.
+/// The webview cannot choose the Account: its identity comes from the signed
+/// native session, and this remains available after approval is revoked.
+#[tauri::command]
+pub fn clear_loaded_modules(
+    store: State<'_, ModuleStore>,
+    auth: State<'_, AuthState>,
+) -> Result<(), AppError> {
+    clear_loaded_modules_for_active_account(&store, &auth)
+}
+
+fn clear_loaded_modules_for_active_account(
+    store: &ModuleStore,
+    state: &AuthState,
+) -> Result<(), AppError> {
+    let account_id = auth::resolve_study_access(state)
+        .account_id
+        .ok_or_else(|| {
+            AppError::Forbidden("a verified Account is required to clear loaded Modules".into())
+        })?;
+    store.clear_account(&account_id)
 }
 
 /// Exposed so the SEAL step (teacher/content lane, spec 03) normalizes through
@@ -306,23 +338,25 @@ mod tests {
 // IPC `kind` equal to the originating variant name — SPEC B Req 8.2). The grace
 // fallback lives in `auth::resolve_access`; these commands only route to it.
 
-use crate::auth::{self, AuthContext, AuthState, Role};
+use crate::auth::{self, AuthContext, AuthSource, AuthState};
 
 /// ONLINE login seam write (Req 2): fetch+cache JWKS, verify, and persist the
 /// session. On any failure nothing is written and a typed error is returned.
 #[tauri::command]
 pub fn auth_online_login(
     access_token: String,
-    jwks_url: String,
     state: State<'_, AuthState>,
 ) -> Result<AuthContext, AppError> {
-    auth::seam::store_session_online(&state.store, &access_token, &jwks_url).map_err(AppError::from)
+    let project = state.project.as_ref().ok_or_else(|| {
+        AppError::Forbidden("Supabase project is not configured in this build".into())
+    })?;
+    auth::seam::store_session_online(&state.store, &access_token, project, state.gate.as_ref())
+        .map_err(AppError::from)
 }
 
-/// Resolve the caller's effective access (Req 4, 6): offline verify first, then
-/// the grace fallback (online gate -> Student read-only). Used on app start and
-/// before any privileged action. Infallible by design — it always yields an
-/// AuthContext, at worst the Student read-only floor.
+/// Refresh current Account authority when possible. Learner access may retain
+/// its last confirmed local approval offline; Teacher access requires a fresh
+/// online result. Infallible: unverifiable sessions return the Student floor.
 #[tauri::command]
 pub fn auth_resolve_role(require_privileged: bool, state: State<'_, AuthState>) -> AuthContext {
     auth::resolve_access(&state, require_privileged)
@@ -346,11 +380,15 @@ pub fn auth_logout(state: State<'_, AuthState>) -> Result<(), AppError> {
 // before it runs, which also fails closed.
 
 /// The policy, split out so it is testable without Tauri state: a verified
-/// Teacher who is not read-only. Administrators are deliberately excluded:
-/// they assign Teacher access but do not author or seal content (ADR-0004,
-/// ADR-0007), so roles stay separate rather than nested.
+/// Teacher or Admin who is active and not read-only, whose decision came
+/// from a FRESH ONLINE source. ADR 0004: "Teacher and Administrator actions
+/// require a fresh online check of current authorization." An offline-verified
+/// token (however valid its signature) is NOT fresh, so it is refused for a
+/// privileged ACTION — entering pages / editing an already-open Draft is a
+/// separate concern handled in the UI, not here.
 fn is_teacher_access(ctx: &AuthContext) -> bool {
-    ctx.role == Role::Teacher && !ctx.read_only
+    let fresh_online = matches!(ctx.source, AuthSource::OnlineGate);
+    ctx.role.is_privileged() && ctx.active && !ctx.read_only && fresh_online
 }
 
 fn require_teacher(state: &AuthState, action: &str) -> Result<AuthContext, AppError> {
@@ -359,93 +397,130 @@ fn require_teacher(state: &AuthState, action: &str) -> Result<AuthContext, AppEr
         Ok(ctx)
     } else {
         Err(AppError::Forbidden(format!(
-            "only a signed-in teacher can {action}"
+            "only an active teacher with a fresh online check can {action}"
         )))
     }
 }
 
-/// Same policy for Administrator-only commands, should any move into the core.
-/// Today Administrator actions run in Supabase behind admin-only functions and
-/// RLS (migration 0004); this keeps one definition ready for the webview's
-/// resolver to agree with.
-#[allow(dead_code)]
-fn is_admin_access(ctx: &AuthContext) -> bool {
-    ctx.role == Role::Admin && !ctx.read_only
+/// The learner policy, split out for testing: an approved Account that is not in
+/// the read-only floor. ADR 0004: "Pending Accounts cannot study local Modules
+/// either." ADR 0007: approved sign-in is required to open Modules. Offline is
+/// fine for a learner once approved (offline study is the whole point), so this
+/// accepts OfflineVerified — it only rejects the unapproved and the floor.
+fn is_learner_access(ctx: &AuthContext) -> bool {
+    ctx.active && ctx.approved && !ctx.read_only
 }
 
-#[cfg(test)]
-mod admin_rbac_tests {
-    use super::*;
-    use crate::auth::AuthSource;
-
-    #[test]
-    fn only_a_verified_admin_is_an_administrator() {
-        let admin = AuthContext {
-            role: Role::Admin,
-            read_only: false,
-            source: AuthSource::OfflineVerified,
-        };
-        let teacher = AuthContext {
-            role: Role::Teacher,
-            read_only: false,
-            source: AuthSource::OfflineVerified,
-        };
-        let floor = AuthContext {
-            role: Role::Student,
-            read_only: true,
-            source: AuthSource::StudentReadOnly,
-        };
-        assert!(is_admin_access(&admin));
-        assert!(!is_admin_access(&teacher));
-        assert!(!is_admin_access(&floor));
+fn require_learner(state: &AuthState, action: &str) -> Result<String, AppError> {
+    // Student-level action: no privileged escalation required.
+    let ctx = auth::resolve_study_access(state);
+    if is_learner_access(&ctx) {
+        ctx.account_id
+            .ok_or_else(|| AppError::Forbidden("Account identity is unavailable".into()))
+    } else {
+        Err(AppError::Forbidden(format!(
+            "only an approved, signed-in learner can {action}"
+        )))
     }
 }
 
 #[cfg(test)]
 mod rbac_tests {
     use super::*;
-    use crate::auth::AuthSource;
+    use crate::auth::Role;
 
-    fn ctx(role: Role, read_only: bool, source: AuthSource) -> AuthContext {
+    #[test]
+    fn local_reset_clears_only_the_verified_accounts_loaded_modules() {
+        struct Offline;
+        impl crate::auth::gate::OnlineGate for Offline {
+            fn recheck(&self, _: &str, _: &str) -> crate::auth::gate::GateOutcome {
+                crate::auth::gate::GateOutcome::Unreachable
+            }
+        }
+        let exp = crate::auth::device_now() + 3600;
+        let minted = crate::auth::e2e::mint("student", exp);
+        let sessions = crate::auth::session_store::SessionStore::open_in_memory().unwrap();
+        crate::auth::e2e::cache(&sessions, "student", &minted.token, &minted.jwks, exp);
+        let auth = AuthState::new(sessions, Box::new(Offline));
+        let module = crate::loader::load_module("../../docs/example.module.json")
+            .or_else(|_| crate::loader::load_module("../../Documents/example.module.json"))
+            .unwrap();
+        let module_id = module.module.id.clone();
+        let loaded = ModuleStore::default();
+        loaded.insert("u1", module.clone());
+        loaded.insert("another-account", module);
+
+        clear_loaded_modules_for_active_account(&loaded, &auth).unwrap();
+
+        assert!(matches!(
+            loaded.get("u1", &module_id),
+            Err(AppError::ModuleNotFound(_))
+        ));
+        assert!(loaded.get("another-account", &module_id).is_ok());
+    }
+
+    fn ctx(role: Role, approved: bool, read_only: bool, source: AuthSource) -> AuthContext {
         AuthContext {
+            account_id: Some("account-1".into()),
             role,
+            approved,
+            active: true,
             read_only,
             source,
         }
     }
 
+    // --- Teacher policy: privileged role + approved + fresh online + not read-only ---
+
     #[test]
-    fn a_verified_teacher_is_allowed() {
+    fn fresh_online_approved_teacher_and_admin_are_allowed() {
         assert!(is_teacher_access(&ctx(
             Role::Teacher,
+            true,
             false,
-            AuthSource::OfflineVerified
+            AuthSource::OnlineGate
         )));
         assert!(is_teacher_access(&ctx(
-            Role::Teacher,
+            Role::Admin,
+            true,
             false,
             AuthSource::OnlineGate
         )));
     }
 
     #[test]
-    fn an_administrator_is_not_a_teacher() {
+    fn offline_verified_teacher_is_refused_without_fresh_online() {
+        // Gap 3 / ADR 0004: a privileged ACTION requires a fresh online check.
+        // A validly cached, offline-verified teacher token is NOT fresh.
         assert!(!is_teacher_access(&ctx(
-            Role::Admin,
+            Role::Teacher,
+            true,
             false,
             AuthSource::OfflineVerified
         )));
     }
 
     #[test]
-    fn students_and_the_floor_are_refused() {
+    fn teacher_permission_is_independent_of_learning_approval() {
+        assert!(is_teacher_access(&ctx(
+            Role::Teacher,
+            false,
+            false,
+            AuthSource::OnlineGate
+        )));
+    }
+
+    #[test]
+    fn students_and_the_floor_are_refused_teacher() {
         assert!(!is_teacher_access(&ctx(
             Role::Student,
+            true,
             false,
-            AuthSource::OfflineVerified
+            AuthSource::OnlineVerified
         )));
         assert!(!is_teacher_access(&ctx(
             Role::Student,
+            false,
             true,
             AuthSource::StudentReadOnly
         )));
@@ -456,7 +531,44 @@ mod rbac_tests {
         assert!(!is_teacher_access(&ctx(
             Role::Teacher,
             true,
+            true,
             AuthSource::OnlineGate
+        )));
+    }
+
+    // --- Learner policy: approved + not read-only (offline is fine) ---
+
+    #[test]
+    fn approved_learner_offline_is_allowed() {
+        // ADR 0007: offline study after approval is the whole point.
+        assert!(is_learner_access(&ctx(
+            Role::Student,
+            true,
+            false,
+            AuthSource::OfflineVerified
+        )));
+        assert!(is_learner_access(&ctx(
+            Role::Teacher,
+            true,
+            false,
+            AuthSource::OfflineVerified
+        )));
+    }
+
+    #[test]
+    fn unapproved_or_floor_learner_is_refused() {
+        // ADR 0004: a pending (unapproved) Account cannot study any Module.
+        assert!(!is_learner_access(&ctx(
+            Role::Student,
+            false,
+            false,
+            AuthSource::OfflineVerified
+        )));
+        assert!(!is_learner_access(&ctx(
+            Role::Student,
+            false,
+            true,
+            AuthSource::StudentReadOnly
         )));
     }
 }

@@ -5,7 +5,7 @@ import { ResetSampleButton } from "@/features/school-directory/components/reset-
 import { MAIN_CONTENT_ID } from "@/components/layout/app-shell";
 
 /**
- * Administration renders only for a verified Administrator (ADR-0007). The
+ * Administration renders only for a verified Administrator (ADR-0008 proposal). The
  * changes made here run against a sample school until the Supabase
  * directory is connected, and every page says so.
  */

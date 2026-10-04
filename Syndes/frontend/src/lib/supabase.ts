@@ -7,10 +7,19 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-// Bracket access: tsconfig has noPropertyAccessFromIndexSignature, and env vars
-// come from an index signature.
-const url = process.env["NEXT_PUBLIC_SUPABASE_URL"];
-const anonKey = process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"];
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace -- Node environment augmentation
+  namespace NodeJS {
+    interface ProcessEnv {
+      readonly NEXT_PUBLIC_SUPABASE_URL?: string;
+      readonly NEXT_PUBLIC_SUPABASE_ANON_KEY?: string;
+    }
+  }
+}
+
+// Dot access lets Next inline these public values into the static desktop bundle.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!url || !anonKey) {
   // Fail loud at startup rather than making half-configured calls that error
@@ -20,4 +29,10 @@ if (!url || !anonKey) {
   );
 }
 
-export const supabase = createClient(url, anonKey);
+export const supabase = createClient(url, anonKey, {
+  auth: {
+    flowType: "pkce",
+    detectSessionInUrl: false,
+    experimental: { appendPkceFlowIdToRedirects: true },
+  },
+});

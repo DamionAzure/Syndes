@@ -2,7 +2,7 @@ import { use } from "react";
 import type { SectionStatistics, StatisticsSnapshot } from "./statistics-types";
 
 /**
- * SAMPLE DATA ONLY (ADR-0007). Counts for a small fictional school, matching
+ * SAMPLE DATA ONLY (ADR-0008 proposal). Counts for a small fictional school, matching
  * the sample Directory. Real snapshots are taken by the admin-only
  * `capture_school_statistics()` function (migration 0004).
  */

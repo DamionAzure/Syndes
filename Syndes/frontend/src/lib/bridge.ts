@@ -32,6 +32,7 @@ export interface AppError {
  * a best-effort message string.
  */
 export function readAppError(error: unknown): AppError {
+  if (error instanceof Error) return { kind: "Unknown", message: error.message };
   if (typeof error === "object" && error !== null) {
     const record = error as Record<string, unknown>;
     const kind = record["kind"];
@@ -200,10 +201,10 @@ export async function generateFromScaffold(choice: ScaffoldChoice): Promise<Modu
   return parseModule(await invoke<unknown>("generate_from_scaffold", { choice }));
 }
 
-/** `auth_online_login(accessToken, jwksUrl) -> AuthContext`. */
-export async function authOnlineLogin(accessToken: string, jwksUrl: string): Promise<AuthContext> {
+/** `auth_online_login(accessToken) -> AuthContext`. */
+export async function authOnlineLogin(accessToken: string): Promise<AuthContext> {
   if (!isTauri()) throw new BridgeUnavailableError("auth_online_login");
-  return parseAuthContext(await invoke<unknown>("auth_online_login", { accessToken, jwksUrl }));
+  return parseAuthContext(await invoke<unknown>("auth_online_login", { accessToken }));
 }
 
 /** `auth_logout() -> ()`. Takes no args; resolves once the session is cleared. */

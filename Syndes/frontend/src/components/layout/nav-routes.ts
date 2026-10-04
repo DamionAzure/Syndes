@@ -74,7 +74,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
   {
-    // Wayfinding only; AdminGuard and Supabase's admin-only functions enforce access (ADR-0007).
+    // Wayfinding only; AdminGuard checks current access for the sample Administration pages.
     label: "Administration",
     audience: "admin",
     routes: [

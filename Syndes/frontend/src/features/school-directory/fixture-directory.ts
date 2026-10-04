@@ -2,7 +2,7 @@ import { FIXTURE_LEARNERS } from "@/features/class-records/fixture-class-records
 import type { Account, ActivityEntry, Directory, Enrollment, SchoolClass, Section, TeacherAssignment } from "./directory-types";
 
 /**
- * SAMPLE DATA ONLY (ADR-0007). A fictional elementary school so the
+ * SAMPLE DATA ONLY (ADR-0008 proposal). A fictional elementary school so the
  * Administrator screens can be designed and reviewed before the Supabase
  * directory is connected. Grade 6 reuses the Teacher area's sample Learners
  * so both roles see the same school. Never add real people here.

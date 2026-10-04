@@ -79,3 +79,28 @@ export function createStoredValue<T>(
     subscribe,
   };
 }
+
+/**
+ * A process-wide cache of `StoredValue`s keyed by their storage key, so that
+ * account-scoped stores (ADR 0007) can resolve a STABLE instance per key without
+ * re-creating subscriptions on every render. `useSyncExternalStore` requires the
+ * `subscribe`/`getSnapshot` identities to be stable for a given key, which this
+ * guarantees: the same key always returns the same `StoredValue`.
+ *
+ * `parse` and `fallback` are bound on first creation for a key; callers must use
+ * the same parse/fallback for a given base key (the drafts and progress stores
+ * each use exactly one), so this is safe.
+ */
+const storedValueCache = new Map<string, StoredValue<unknown>>();
+
+export function getStoredValue<T>(
+  key: string,
+  parse: (raw: unknown) => T,
+  fallback: T,
+): StoredValue<T> {
+  const existing = storedValueCache.get(key);
+  if (existing) return existing as StoredValue<T>;
+  const created = createStoredValue(key, parse, fallback);
+  storedValueCache.set(key, created as StoredValue<unknown>);
+  return created;
+}

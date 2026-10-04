@@ -27,6 +27,9 @@ export const fixtureModuleSource: ModuleSource = {
   async getModule(id) {
     return FIXTURE_MODULES.find((module) => module.id === id) ?? null;
   },
+  async downloadModule() {
+    throw new Error("Fixture Modules cannot be saved.");
+  },
   async openModuleFile() {
     return { status: "unsupported" };
   },

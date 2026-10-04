@@ -14,8 +14,8 @@ type GuardState = "checking" | "allowed" | "denied";
  * static HTML holds only the checking state.
  *
  * This is the usability layer. Enforcement lives where the data does: the
- * core for teacher commands, Supabase functions and RLS for Administrator
- * actions (ADR-0006, ADR-0007).
+ * core for teacher commands. Administrator pages currently contain sample
+ * local data (ADR-0008 proposal).
  */
 export function RoleGuard({
   allow,
@@ -31,15 +31,19 @@ export function RoleGuard({
 
   useEffect(() => {
     let active = true;
-    void resolveAccess(true).then((context) => {
-      if (!active) return;
-      const allowed = allow(context);
-      setState(allowed ? "allowed" : "denied");
-      // Replace, so Back does not return to a page this person cannot open.
-      if (!allowed) router.replace(LEARN_HOME);
-    });
+    const check = () => {
+      void resolveAccess(true).then((context) => {
+        if (!active) return;
+        const allowed = allow(context);
+        setState(allowed ? "allowed" : "denied");
+        if (!allowed) router.replace(LEARN_HOME);
+      });
+    };
+    check();
+    window.addEventListener("online", check);
     return () => {
       active = false;
+      window.removeEventListener("online", check);
     };
   }, [allow, router]);
 

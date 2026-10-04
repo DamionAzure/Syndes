@@ -8,10 +8,27 @@ export type Role = "student" | "teacher" | "admin";
 
 export type AuthSource = "onlineVerified" | "offlineVerified" | "onlineGate" | "studentReadOnly";
 
-export type AuthContext = { role: Role; readOnly: boolean; source: AuthSource };
+export type AuthContext = {
+  /** Verified Supabase user id from the native core, not a webview claim. */
+  accountId: string | null;
+  /** False when the Administrator has revoked the whole Account. */
+  active: boolean;
+  role: Role;
+  /** Whether an Administrator has approved this Account for learning (ADR 0004/0007). */
+  approved: boolean;
+  readOnly: boolean;
+  source: AuthSource;
+};
 
-/** The core's own floor: no verifiable session means Student, read-only. */
-export const STUDENT_FLOOR: AuthContext = { role: "student", readOnly: true, source: "studentReadOnly" };
+/** The core's own floor: no verifiable session means Student, read-only, unapproved. */
+export const STUDENT_FLOOR: AuthContext = {
+  accountId: null,
+  active: false,
+  role: "student",
+  approved: false,
+  readOnly: true,
+  source: "studentReadOnly",
+};
 
 const ROLES: readonly Role[] = ["student", "teacher", "admin"];
 const SOURCES: readonly AuthSource[] = ["onlineVerified", "offlineVerified", "onlineGate", "studentReadOnly"];
@@ -23,20 +40,31 @@ export function parseAuthContext(raw: unknown): AuthContext {
   const role = ROLES.find((candidate) => candidate === record["role"]);
   const source = SOURCES.find((candidate) => candidate === record["source"]);
   const readOnly = record["readOnly"];
-  if (!role || !source || typeof readOnly !== "boolean") return STUDENT_FLOOR;
-  return { role, readOnly, source };
+  const accountId = record["accountId"];
+  const active = record["active"];
+  if (!role || !source || typeof readOnly !== "boolean" || typeof active !== "boolean" ||
+      (accountId !== null && (typeof accountId !== "string" || accountId.length === 0))) return STUDENT_FLOOR;
+  // Approval must be an explicit boolean; anything else fails closed to false.
+  const approved = record["approved"] === true;
+  return { accountId, active, role, approved, readOnly, source };
 }
 
-/**
- * Roles are separate, not nested (ADR-0007): Teach is for a verified Teacher,
- * Administration for a verified Administrator. Everyone may use Learn.
- */
+/** Teach requires current online authority; Administrators may teach (ADR-0004). */
 export function canTeach(context: AuthContext): boolean {
-  return context.role === "teacher" && !context.readOnly;
+  return context.active && context.accountId !== null &&
+    (context.role === "teacher" || context.role === "admin") && !context.readOnly &&
+    context.source === "onlineGate";
 }
 
+/** Administration requires the same fresh check and the Administrator role. */
 export function canAdminister(context: AuthContext): boolean {
-  return context.role === "admin" && !context.readOnly;
+  return context.active && context.accountId !== null && context.role === "admin" &&
+    !context.readOnly && context.source === "onlineGate";
+}
+
+/** May study: an approved Account not in the read-only floor (ADR 0004/0007). */
+export function canLearn(context: AuthContext): boolean {
+  return context.active && context.accountId !== null && context.approved && !context.readOnly;
 }
 
 export const TEACH_PATH = "/teach";

@@ -32,6 +32,12 @@ pub struct CachedSession {
     pub token_exp: i64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AccountReceipt {
+    pub approved: bool,
+    pub active: bool,
+}
+
 /// Owns the SQLite connection and the `cached_session` table. The connection is
 /// behind a mutex so the single Tauri-managed instance can be shared across
 /// commands (mirrors `ModuleStore`'s interior-mutability pattern).
@@ -149,7 +155,15 @@ impl SessionStore {
                  token_exp     integer not null
              );",
         )
-        .map_err(|e| AuthError::StorageError(format!("migrate cached_session: {e}")))
+        .map_err(|e| AuthError::StorageError(format!("migrate cached_session: {e}")))?;
+        conn.execute_batch(
+            "create table if not exists account_receipt (
+                 user_id text primary key,
+                 approved integer not null check (approved in (0,1)),
+                 active integer not null check (active in (0,1))
+             );",
+        )
+        .map_err(|e| AuthError::StorageError(format!("migrate account_receipt: {e}")))
     }
 
     /// Confirm the Rust_Core app-data tables exist without touching their shape
@@ -189,8 +203,16 @@ impl SessionStore {
     /// single-statement upsert is atomic. Called ONLY after a successful verify
     /// (`auth::seam` is the sole caller).
     pub fn store_cached_session(&self, session: &CachedSession) -> Result<(), AuthError> {
-        let conn = self.lock()?;
-        conn.execute(
+        let mut conn = self.lock()?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| AuthError::StorageError(format!("start session switch: {e}")))?;
+        tx.execute(
+            "delete from cached_session where user_id <> ?1",
+            params![session.user_id],
+        )
+        .map_err(|e| AuthError::StorageError(format!("switch cached_session: {e}")))?;
+        tx.execute(
             "insert into cached_session
                  (user_id, email, role, access_token, jwks_cache, cached_at, token_exp)
              values (?1, ?2, ?3, ?4, ?5, ?6, ?7)
@@ -211,8 +233,9 @@ impl SessionStore {
                 session.token_exp,
             ],
         )
-        .map(|_| ())
-        .map_err(|e| AuthError::StorageError(format!("store cached_session: {e}")))
+        .map_err(|e| AuthError::StorageError(format!("store cached_session: {e}")))?;
+        tx.commit()
+            .map_err(|e| AuthError::StorageError(format!("commit session switch: {e}")))
     }
 
     /// Load the single cached session, if one exists. Returns the raw stored
@@ -253,20 +276,35 @@ impl SessionStore {
             .map_err(|e| AuthError::StorageError(format!("clear cached_session: {e}")))
     }
 
-    /// Delete every row whose token has already expired at `now` (Unix seconds),
-    /// returning how many rows were removed. This is pure cache hygiene, NOT a
-    /// trust decision: the verify layer already rejects an expired `exp`, so an
-    /// un-pruned expired row is harmless — pruning just keeps the file from
-    /// accumulating dead sessions and makes a stale cache obvious. A row with
-    /// `token_exp == now` is kept (not yet strictly past). Safe to call anytime;
-    /// on an empty table it removes nothing and returns 0.
-    pub fn prune_expired(&self, now: i64) -> Result<usize, AuthError> {
+    pub fn store_account_receipt(
+        &self,
+        user_id: &str,
+        receipt: AccountReceipt,
+    ) -> Result<(), AuthError> {
         let conn = self.lock()?;
         conn.execute(
-            "delete from cached_session where token_exp < ?1",
-            params![now],
+            "insert into account_receipt (user_id, approved, active) values (?1, ?2, ?3)
+             on conflict(user_id) do update set approved=excluded.approved, active=excluded.active",
+            params![user_id, receipt.approved, receipt.active],
         )
-        .map_err(|e| AuthError::StorageError(format!("prune expired sessions: {e}")))
+        .map(|_| ())
+        .map_err(|e| AuthError::StorageError(format!("store account receipt: {e}")))
+    }
+
+    pub fn load_account_receipt(&self, user_id: &str) -> Result<Option<AccountReceipt>, AuthError> {
+        let conn = self.lock()?;
+        conn.query_row(
+            "select approved, active from account_receipt where user_id=?1",
+            params![user_id],
+            |row| {
+                Ok(AccountReceipt {
+                    approved: row.get(0)?,
+                    active: row.get(1)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|e| AuthError::StorageError(format!("load account receipt: {e}")))
     }
 
     fn lock(&self) -> Result<std::sync::MutexGuard<'_, Connection>, AuthError> {
@@ -320,6 +358,26 @@ mod tests {
             .query_row("select count(*) from cached_session", [], |r| r.get(0))
             .unwrap();
         assert_eq!(count, 1, "upsert must not create a duplicate row");
+    }
+
+    #[test]
+    fn switching_accounts_makes_the_new_account_active_even_in_the_same_second() {
+        let store = SessionStore::open_in_memory().unwrap();
+        store
+            .store_cached_session(&sample("account-a", "student"))
+            .unwrap();
+        store
+            .store_cached_session(&sample("account-b", "teacher"))
+            .unwrap();
+        assert_eq!(
+            store.load_cached_session().unwrap().unwrap().user_id,
+            "account-b"
+        );
+        let conn = store.conn.lock().unwrap();
+        let count: i64 = conn
+            .query_row("select count(*) from cached_session", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1);
     }
 
     #[test]
@@ -390,47 +448,6 @@ mod tests {
             }
         }
         assert!(store.confirm_app_data_tables().is_ok());
-    }
-
-    #[test]
-    fn prune_expired_removes_only_strictly_past_rows() {
-        let store = SessionStore::open_in_memory().unwrap();
-        // Three users with distinct expiries. (One row per user_id; different
-        // ids so all three coexist.)
-        let mut past = sample("u-past", "student");
-        past.token_exp = 1_000;
-        let mut boundary = sample("u-now", "student");
-        boundary.token_exp = 2_000;
-        let mut future = sample("u-future", "student");
-        future.token_exp = 3_000;
-        store.store_cached_session(&past).unwrap();
-        store.store_cached_session(&boundary).unwrap();
-        store.store_cached_session(&future).unwrap();
-
-        // now == 2_000: the past row (1_000 < 2_000) goes; the boundary row
-        // (2_000, not strictly past) and the future row stay.
-        let removed = store.prune_expired(2_000).unwrap();
-        assert_eq!(removed, 1);
-
-        let conn = store.conn.lock().unwrap();
-        let count: i64 = conn
-            .query_row("select count(*) from cached_session", [], |r| r.get(0))
-            .unwrap();
-        assert_eq!(count, 2, "boundary and future rows must survive");
-        let has_past: i64 = conn
-            .query_row(
-                "select count(*) from cached_session where user_id = 'u-past'",
-                [],
-                |r| r.get(0),
-            )
-            .unwrap();
-        assert_eq!(has_past, 0, "the strictly-expired row must be gone");
-    }
-
-    #[test]
-    fn prune_expired_on_empty_table_is_noop() {
-        let store = SessionStore::open_in_memory().unwrap();
-        assert_eq!(store.prune_expired(9_999).unwrap(), 0);
     }
 
     #[test]

@@ -55,7 +55,14 @@ pub fn run() {
     // overrides a variable already set in the real environment.
     let _ = dotenvy::dotenv();
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}));
+    }
+    builder
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .manage(ModuleStore::default())
         // Build the local session cache (SPEC B) in setup, where the app data dir
@@ -66,6 +73,12 @@ pub fn run() {
         // fail closed, never open).
         .setup(|app| {
             use tauri::Manager;
+
+            #[cfg(any(target_os = "linux", all(debug_assertions, windows)))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                app.deep_link().register_all()?;
+            }
 
             let db_path = app
                 .path()
@@ -85,9 +98,17 @@ pub fn run() {
             // The gate re-check endpoint is Spec A's contract. Read it from the
             // environment; when unset the gate is "unreachable" by construction,
             // so offline-style read-only behaviour applies until it is configured.
-            let recheck_url = std::env::var("SUPABASE_ROLE_RECHECK_URL").unwrap_or_default();
+            let project = auth::project::ProjectConfig::configured().ok();
+            let recheck_url = project
+                .as_ref()
+                .map(|p| p.account_access_url.clone())
+                .unwrap_or_default();
+            let publishable_key = project
+                .as_ref()
+                .map(|p| p.publishable_key.clone())
+                .unwrap_or_default();
             let gate: Box<dyn auth::gate::OnlineGate + Send + Sync> =
-                Box::new(auth::gate::SupabaseGate::new(recheck_url));
+                Box::new(auth::gate::SupabaseGate::new(recheck_url, publishable_key));
 
             match auth::session_store::SessionStore::open(&db_path) {
                 Ok(store) => {
@@ -99,19 +120,8 @@ pub fn run() {
                     if let Err(e) = store.confirm_app_data_tables() {
                         eprintln!("auth: app-data tables not yet provisioned ({e})");
                     }
-                    // Cache hygiene: drop any sessions whose token already expired
-                    // so the file does not accumulate dead rows across launches.
-                    // Purely advisory — the verify layer already rejects expired
-                    // tokens — so a failure here is logged, never fatal.
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|d| d.as_secs() as i64)
-                        .unwrap_or(0);
-                    if now > 0 {
-                        if let Err(e) = store.prune_expired(now) {
-                            eprintln!("auth: could not prune expired sessions ({e})");
-                        }
-                    }
+                    // Keep expired signed identities: a confirmed local receipt
+                    // lets an approved Account continue studying offline until sign-out.
                     app.manage(auth::AuthState::new(store, gate));
                 }
                 Err(e) => {
@@ -127,6 +137,7 @@ pub fn run() {
             commands::load_module,
             commands::check_answer,
             commands::score_submission,
+            commands::clear_loaded_modules,
             commands::normalize_answer,
             commands::seal_module,
             commands::seal_answer,

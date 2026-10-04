@@ -1,19 +1,18 @@
 // Data-access layer for the online module store (spec: supabase-database).
 //
-// Student path isolation: NOTHING here is imported by the offline scoring path.
-// The only online->offline bridge is pullModule, which ends by handing a local
-// file to the EXISTING load_module Tauri command — the Rust core is unchanged.
+// This module reads and publishes Supabase Modules. Account-scoped downloads
+// are owned by features/modules/module-source.ts.
 
-import { invoke } from "@tauri-apps/api/core";
-import { writeTextFile, mkdir, BaseDirectory } from "@tauri-apps/plugin-fs";
 import { supabase } from "./supabase";
+import { canTeach } from "./access/access";
+import { resolveAccess } from "./access/access-bridge";
 import type { ListFilter, Module, ModuleSummary } from "./types";
 
-// Row shape as stored/returned by the `modules` table. Only `data` + `published`
-// (+ owner) are ever written by the client; the metadata columns are derived
+// Row shape as stored/returned by the `modules` table. The metadata columns are derived
 // server-side by the validation trigger (migration 0002), so they are read-only
 // projections here.
 interface ModuleRow {
+  id: string;
   data: Module;
   owner: string | null;
   published: boolean;
@@ -31,13 +30,23 @@ type SummaryRow = Omit<ModuleSummary, "published_at"> & { created_at: string };
  * server-side sealed-shape trigger is the backstop and surfaces rejections here.
  */
 export async function publishModule(sealed: Module): Promise<void> {
+  const access = await resolveAccess(true);
+  if (!canTeach(access) || access.source !== "onlineGate") {
+    throw new Error("Teacher access must be verified online before publishing.");
+  }
   const { data: auth } = await supabase.auth.getUser(); // teacher must be signed in
+  if (!auth.user || !("accountId" in access) || access.accountId !== auth.user.id) {
+    throw new Error("Teacher access does not match the signed-in Account.");
+  }
   const row: ModuleRow = {
+    id: sealed.module.id,
     data: sealed,
-    owner: auth.user?.id ?? null,
+    owner: auth.user.id,
     published: true,
   };
-  const { error } = await supabase.from("modules").insert(row);
+  // A Draft keeps its Module ID across edits. The conflict path is guarded by
+  // modules_update_own RLS, so a Teacher cannot replace someone else's Module.
+  const { error } = await supabase.from("modules").upsert(row, { onConflict: "id" });
   if (error) throw error; // trigger rejections (unsealed/plaintext/contract) surface here
 }
 
@@ -75,21 +84,4 @@ export async function getModule(id: string): Promise<Module> {
     .single<{ data: Module }>();
   if (error) throw error;
   return data.data;
-}
-
-/**
- * Pull (Req 6.1-6.5): fetch the sealed JSON, write it to local disk, then hand off
- * to the EXISTING offline core via load_module. This is the ONLY online->offline
- * bridge; after it returns, scoring is 100% offline through the unchanged Rust core.
- */
-export async function pullModule(id: string): Promise<Module> {
-  const sealed = await getModule(id); // online: Supabase
-
-  // Ensure the local modules directory exists, then write the plain JSON file.
-  await mkdir("modules", { baseDir: BaseDirectory.AppLocalData, recursive: true });
-  const path = `modules/${id}.json`;
-  await writeTextFile(path, JSON.stringify(sealed), { baseDir: BaseDirectory.AppLocalData });
-
-  // offline: the unchanged Rust core parses it exactly as any locally-held module.
-  return invoke<Module>("load_module", { path });
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AccountControl } from "@/components/access/account-control";
 import { ConnectionStatus } from "./connection-status";
 import { MobileNavSheet } from "./mobile-nav-sheet";
 import { SiteNav } from "./site-nav";
@@ -30,7 +31,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SiteNav />
             </div>
             <div className="shrink-0 border-t border-border px-4 py-4">
-              <ConnectionStatus className="rounded-lg border border-border bg-surface px-3 py-2" />
+              <AccountControl />
+              <ConnectionStatus className="mt-3 rounded-lg border border-border bg-surface px-3 py-2" />
             </div>
           </div>
         </aside>
@@ -40,6 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Wordmark />
             <div className="ml-auto flex items-center gap-3">
               <ConnectionStatus />
+              <AccountControl compact />
               <MobileNavSheet />
             </div>
           </header>

@@ -1,11 +1,15 @@
 "use client";
 
 import { BookOpen, Layers, ListChecks, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { canTeach } from "@/lib/access/access";
+import { resolveAccess } from "@/lib/access/access-bridge";
+import { LegacyImport } from "@/features/settings/components/legacy-import";
 import { checkDraft } from "../draft-checks";
 import {
   createDraft,
@@ -45,11 +49,22 @@ const STARTS: { start: DraftStart; label: string; description: string; icon: Luc
 export function DraftsView({ headingId }: { headingId: string }) {
   const router = useRouter();
   const drafts = listDrafts(useDraftStore());
+  const [starting, setStarting] = useState(false);
+  const [accessError, setAccessError] = useState(false);
 
-  function start(kind: DraftStart) {
+  async function start(kind: DraftStart) {
+    setStarting(true);
+    setAccessError(false);
+    const access = await resolveAccess(true);
+    if (!canTeach(access)) {
+      setAccessError(true);
+      setStarting(false);
+      return;
+    }
     const id = newId();
     updateDrafts((store) => createDraft(store, kind, id, new Date().toISOString()));
     router.push(authoringRoutes.editor(id, startingPart({ start: kind })));
+    setStarting(false);
   }
 
   return (
@@ -66,13 +81,15 @@ export function DraftsView({ headingId }: { headingId: string }) {
                 <p className="font-semibold">{label}</p>
                 <p className="text-meta text-muted-foreground">{description}</p>
               </div>
-              <Button variant="outline" onClick={() => start(kind)} className="justify-self-start">
+              <Button variant="outline" onClick={() => void start(kind)} disabled={starting} className="justify-self-start">
                 Create {label.replace(/^New /, "")}
               </Button>
             </li>
           ))}
         </ul>
       </section>
+      {accessError ? <p role="alert" className="text-meta text-destructive">Connect to verify Teacher access before starting a new Draft.</p> : null}
+      <LegacyImport kind="drafts" />
 
       <section aria-labelledby="drafts-heading" className="overflow-hidden rounded-xl border border-border bg-surface">
         <div className="border-b border-border px-6 py-4">

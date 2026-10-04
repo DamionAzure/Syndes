@@ -26,9 +26,9 @@ describe("AdminGuard", () => {
   });
 
   it.each([
-    { role: "student", readOnly: false, source: "offlineVerified" },
-    { role: "teacher", readOnly: false, source: "offlineVerified" },
-    { role: "student", readOnly: true, source: "studentReadOnly" },
+    { accountId: "student-1", active: true, approved: true, role: "student", readOnly: false, source: "offlineVerified" },
+    { accountId: "teacher-1", active: true, approved: true, role: "teacher", readOnly: false, source: "offlineVerified" },
+    { accountId: null, active: false, approved: false, role: "student", readOnly: true, source: "studentReadOnly" },
   ] as const)("sends a $role ($source) to Home without rendering", async (context) => {
     resolveAccess.mockResolvedValue(context);
     renderGuard();
@@ -37,7 +37,7 @@ describe("AdminGuard", () => {
   });
 
   it("renders for a verified Administrator", async () => {
-    resolveAccess.mockResolvedValue({ role: "admin", readOnly: false, source: "onlineGate" });
+    resolveAccess.mockResolvedValue({ accountId: "admin-1", active: true, approved: true, role: "admin", readOnly: false, source: "onlineGate" });
     renderGuard();
     expect(await screen.findByRole("heading", { name: "People and access" })).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();

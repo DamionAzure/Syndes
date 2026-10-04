@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { canAdminister } from "@/lib/access/access";
 import { RoleGuard } from "./role-guard";
 
-/** Administration pages, for a verified Administrator only (ADR-0007). */
+/** Administration pages require current Administrator authority (ADR-0004). */
 export function AdminGuard({ children }: { children: ReactNode }) {
   return (
     <RoleGuard

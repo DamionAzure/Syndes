@@ -1,5 +1,6 @@
--- Migration 0004: school directory and Administrator-assigned access.
--- (ADR-0004 accepted, ADR-0007; roles and invites from docs/Spec A)
+-- PROPOSAL ONLY: school directory and Administrator-assigned access.
+-- Do not apply as a migration. Its profiles role conflicts with the accepted
+-- app_private.account_access authority (ADR-0004); reconcile first (ADR-0008).
 --
 -- What this adds:
 --   * profiles with an app_role (student | teacher | admin) and a status, born
@@ -22,8 +23,8 @@
 --     policy on profiles that selects from profiles would recurse.
 --   * search_path is pinned to '' and every name is schema-qualified.
 --
--- Not yet executed against a database (no Supabase CLI here). Run it with
--- the steps in supabase/README.md before relying on it.
+-- Not yet executed against a database. Do not run until the authority model
+-- is reconciled and a reviewed migration is generated.
 
 -- ---------------------------------------------------------------------------
 -- Roles and profiles

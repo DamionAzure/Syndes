@@ -13,7 +13,7 @@ import type { Module, Quiz } from "@/features/modules/module-types";
 import { routes } from "@/features/modules/routes";
 import { useModuleParam } from "@/features/modules/use-module-param";
 import { placeLabel } from "@/features/progress/place-label";
-import { markQuizSubmitted, recordAnswer, recordStep } from "@/features/progress/progress-store";
+import { markFinalLessonReached, markQuizSubmitted, recordAnswer, recordStep } from "@/features/progress/progress-store";
 import { nowIso, updateProgress, useModuleProgress } from "@/features/progress/use-progress";
 import { useQuizScorer } from "../quiz-scorer";
 import { quizNavigation, startingQuestion, unansweredQuestions } from "../quiz-session";
@@ -73,7 +73,10 @@ function QuizSession({ found, quiz }: { found: Module; quiz: Quiz }) {
     setSubmitError(false);
     try {
       await scorer.score(found.id, answers);
-      updateProgress((store) => markQuizSubmitted(store, found, nowIso()));
+      updateProgress((store) => {
+        const ready = found.lessons.length === 0 ? markFinalLessonReached(store, found, nowIso()) : store;
+        return markQuizSubmitted(ready, found, nowIso());
+      });
       router.push(routes.result(found.id));
     } catch {
       setSubmitError(true);

@@ -16,7 +16,7 @@ import { SAMPLE_ADMIN_ID, sampleDirectory } from "./fixture-directory";
  * The sample Directory, with the Administrator's changes kept on this device
  * so the screens can be tried end to end. In production this is replaced by
  * the Supabase directory: reads through RLS, changes through the admin-only
- * functions in migration 0004, which re-check the caller's role (ADR-0007).
+ * functions in a future migration, which must use current Account authority (ADR-0008 proposal).
  */
 export const DIRECTORY_KEY = "syndes:directory-sample:v1";
 
