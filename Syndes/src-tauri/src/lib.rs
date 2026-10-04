@@ -57,6 +57,11 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        // Filesystem access for the teacher authoring lane (seal -> write
+        // modules/<id>.json under AppLocalData). The frontend uses
+        // @tauri-apps/plugin-fs; this registers the matching backend. Scope is
+        // locked down in capabilities/default.json.
+        .plugin(tauri_plugin_fs::init())
         .manage(ModuleStore::default())
         // Build the local session cache (SPEC B) in setup, where the app data dir
         // is resolvable. The DB lives under the OS app-data dir so it persists

@@ -20,6 +20,12 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+# Filesystem access for the teacher authoring lane: draft-sealer.ts and
+# moduleStore.ts write sealed modules to AppLocalData (modules/<id>.json) via
+# @tauri-apps/plugin-fs. Without this plugin registered the write throws, so the
+# seal step cannot persist a module. Permissions are granted narrowly in
+# capabilities/default.json (write-text-file + mkdir, AppLocalData only).
+tauri-plugin-fs = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Rust scoring core (spec 04): hashing, the authoritative normalizer, constant-time compare.
