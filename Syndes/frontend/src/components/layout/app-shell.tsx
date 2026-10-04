@@ -36,7 +36,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
         <div className="flex min-w-0 flex-col">
-          <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-background px-4 py-2 sm:px-6 lg:hidden">
+          {/* Top padding grows by --safe-top so the Android status bar never covers the wordmark. */}
+          <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-background px-4 pt-[calc(0.5rem+var(--safe-top))] pb-2 sm:px-6 lg:hidden">
             <Wordmark />
             <div className="ml-auto flex items-center gap-3">
               <ConnectionStatus />

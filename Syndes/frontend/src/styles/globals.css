@@ -68,6 +68,17 @@
 :root {
   --radius: 6px;
   --control-height: 44px;
+  /* Space reserved under the phone status bar. Zero on desktop and the web. */
+  --safe-top: 0px;
+}
+
+/*
+ * The Android app draws edge-to-edge, so the status bar (clock, battery) sits on
+ * top of the page. Use the inset the device reports, but never less than 28px,
+ * because some Android webviews report 0. Set by the pre-paint script.
+ */
+[data-platform="android"] {
+  --safe-top: max(env(safe-area-inset-top, 0px), 28px);
 }
 
 /* Also matched by nested previews, so a light swatch stays light inside Dark. */

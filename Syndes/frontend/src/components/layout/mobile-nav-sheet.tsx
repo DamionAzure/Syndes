@@ -19,7 +19,11 @@ export function MobileNavSheet() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger render={<Button variant="outline" size="sm" />}>Menu</SheetTrigger>
-      <SheetContent side="left" showCloseButton={false} className="gap-6 bg-surface-muted p-4">
+      <SheetContent
+        side="left"
+        showCloseButton={false}
+        className="gap-6 bg-surface-muted p-4 pt-[calc(1rem+var(--safe-top))]"
+      >
         <SheetHeader className="flex-row items-center justify-between p-0">
           <SheetTitle className="text-section font-semibold">Menu</SheetTitle>
           <SheetClose render={<Button variant="outline" size="sm" />}>Close</SheetClose>

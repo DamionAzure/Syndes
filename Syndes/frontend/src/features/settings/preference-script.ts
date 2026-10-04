@@ -11,6 +11,8 @@ export const PREFERENCES_KEY = "syndes:preferences:v1";
  */
 export const preferenceScript = `(function () {
   var root = document.documentElement;
+  // The Android app draws under the status bar; globals.css reserves space for it.
+  if (/Android/i.test(window.navigator.userAgent)) root.dataset.platform = "android";
   try {
     var saved = JSON.parse(window.localStorage.getItem(${JSON.stringify(PREFERENCES_KEY)}) || "null") || {};
     var theme = saved.theme;
