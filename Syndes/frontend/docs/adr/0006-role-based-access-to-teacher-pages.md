@@ -1,18 +1,18 @@
 # Role-based access to Teacher pages
 
-Status: proposed. Needs maintainer review because it touches authorization.
+Status: accepted for the MVP.
 
-Approved Students may use only the Learn side. Teachers may use Learn and Teach. The app is a static export served by Tauri, so it has no server and no middleware. The Rust core currently resolves the role from a verified session (`auth_resolve_role`, SPEC B).
+Approved Students may use Learn. Teachers and Administrators may also use Teach after a fresh online check. The app is a static export served by Tauri, so it has no server and no middleware. The Rust core verifies the Account's Supabase session and reads current authority from the server (`auth_resolve_role`).
 
 ## Decision
 
 **The Rust core enforces access.** `seal_module`, `seal_answer`, `generate_module`, `generate_from_scaffold` and `list_scaffolds` call `require_teacher` before reading their input.
-- It uses `resolve_access(state, true)` and allows only Teacher or Admin with `readOnly: false`.
+- It uses a fresh online access check and allows only Teacher or Admin with `readOnly: false`.
 - Any other caller gets `AppError::Forbidden`, which serializes as `{ "kind": "forbidden", "message": … }`.
 - If the session store failed to open, the auth state is never managed. Tauri then rejects these commands before they run, so the check fails closed.
 
 **The webview follows the core's answer and never decides a role itself.**
-- `lib/access/access-bridge.ts` calls `auth_resolve_role`. Outside Tauri, on any error, or on any unexpected payload, it resolves to the Student floor.
+- `lib/access/access-bridge.ts` calls `auth_resolve_role`. Outside Tauri in production, on any error, or on any unexpected payload, it resolves to the Student floor.
 - `TeachGuard` (in `app/teach/layout.tsx`) asks again with `requirePrivileged: true` each time someone enters the Teach section.
   - It renders nothing from the page until the core answers.
   - It sends anyone who isn't a Teacher to Home with `router.replace`.
@@ -29,6 +29,5 @@ Approved Students may use only the Learn side. Teachers may use Learn and Teach.
 ## Consequences
 
 - **The client checks are for usability, not secrecy.** A static export ships every page's code, including the inline payload with page headings, to every device. Nothing secret may live in the bundle. Real Learner records and anything else teacher-only must come from a teacher-gated Rust command, never from client fixtures.
-- **Nobody can become a Teacher yet.** There is no sign-in flow, so in the desktop app everyone resolves to the Student floor until a session is stored with `auth_online_login`. That needs the Supabase sign-in from Spec A.
-- **New teacher-only commands must call `require_teacher` first.** Student-path commands (`load_module`, `check_answer`, `score_submission`) are currently ungated. Before sign-in ships, they need an approved-Account check that also honors the offline access decision in ADR-0007; Pending Accounts must not be able to use them.
-- **Required alignment with ADR-0004 (accepted):** `require_teacher` currently accepts a role verified offline from the cached token, but entering Teach pages and starting Teacher or Administrator operations require a fresh online check of current authorization. The online recheck endpoint and command guard must be connected before this access model is complete. A Teacher may preserve edits to an already-open local Draft during a connection loss. Administrators are allowed into Teach pages and commands, as confirmed for the MVP.
+- **New teacher-only commands must call `require_teacher` first.** Student-path commands (`load_module`, `check_answer`, `score_submission`) check approved Account access and honor the offline study decision in ADR-0007. Pending Accounts cannot use them.
+- **Current authority is online for privileged work.** A cached token never grants Teacher access by itself. A Teacher may preserve edits to an already-open local Draft during a connection loss, but entering Teach or starting generation, sealing, or publishing waits for current online authorization. Administrators follow the same rule.
