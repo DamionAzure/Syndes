@@ -22,13 +22,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="hidden border-r border-border bg-surface-muted lg:block">
-          <div className="sticky top-0 flex h-dvh flex-col gap-8 overflow-y-auto px-4 py-5">
-            <div className="px-1">
+          {/* Wordmark and status stay put; only the routes scroll when a role has many of them. */}
+          <div className="sticky top-0 flex h-dvh flex-col">
+            <div className="shrink-0 px-5 pt-5 pb-6">
               <Wordmark />
             </div>
-            <SiteNav />
-            <AccountControl />
-            <ConnectionStatus className="mt-auto rounded-lg border border-border bg-surface px-3 py-2" />
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+              <SiteNav />
+            </div>
+            <div className="shrink-0 border-t border-border px-4 py-4">
+              <AccountControl />
+              <ConnectionStatus className="mt-3 rounded-lg border border-border bg-surface px-3 py-2" />
+            </div>
           </div>
         </aside>
 

@@ -120,6 +120,8 @@ pub fn run() {
                     if let Err(e) = store.confirm_app_data_tables() {
                         eprintln!("auth: app-data tables not yet provisioned ({e})");
                     }
+                    // Keep expired signed identities: a confirmed local receipt
+                    // lets an approved Account continue studying offline until sign-out.
                     app.manage(auth::AuthState::new(store, gate));
                 }
                 Err(e) => {

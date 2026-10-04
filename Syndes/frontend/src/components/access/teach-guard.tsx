@@ -8,14 +8,7 @@ import { resolveAccess } from "@/lib/access/access-bridge";
 
 type GuardState = "checking" | "allowed" | "denied";
 
-/**
- * Renders Teacher pages only after the Rust core confirms a Teacher or Admin;
- * anyone else is sent to Home. Nothing inside renders while checking, and the
- * static HTML holds only the checking state.
- *
- * This is the usability layer. The enforcement is in the core: teacher
- * commands refuse callers without a verified Teacher role (ADR-0006).
- */
+/** Teacher pages require a fresh online Teacher or Administrator grant (ADR-0004). */
 export function TeachGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,9 +37,5 @@ export function TeachGuard({ children }: { children: ReactNode }) {
 
   const state = decision.pathname === pathname ? decision.state : "checking";
   if (state === "allowed") return children;
-  return (
-    <LoadingState
-      label={state === "checking" ? "Checking your access…" : "Teacher pages are for teachers only. Taking you to Home…"}
-    />
-  );
+  return <LoadingState label={state === "checking" ? "Checking your access…" : "Teacher pages require current Teacher or Administrator access. Taking you to Home…"} />;
 }

@@ -49,11 +49,17 @@ export function parseAuthContext(raw: unknown): AuthContext {
   return { accountId, active, role, approved, readOnly, source };
 }
 
-/** Teach is for a verified Teacher or Admin who is not in the read-only floor. */
+/** Teach requires current online authority; Administrators may teach (ADR-0004). */
 export function canTeach(context: AuthContext): boolean {
   return context.active && context.accountId !== null &&
     (context.role === "teacher" || context.role === "admin") && !context.readOnly &&
     context.source === "onlineGate";
+}
+
+/** Administration requires the same fresh check and the Administrator role. */
+export function canAdminister(context: AuthContext): boolean {
+  return context.active && context.accountId !== null && context.role === "admin" &&
+    !context.readOnly && context.source === "onlineGate";
 }
 
 /** May study: an approved Account not in the read-only floor (ADR 0004/0007). */
@@ -63,10 +69,20 @@ export function canLearn(context: AuthContext): boolean {
 
 export const TEACH_PATH = "/teach";
 
+export const ADMIN_PATH = "/admin";
+
 /** Where a Student lands when they try to open a Teacher page. */
 export const LEARN_HOME = "/";
 
-export function isTeachPath(pathname: string): boolean {
+function isWithin(pathname: string, base: string): boolean {
   const path = pathname.length > 1 ? pathname.replace(/\/$/, "") : pathname;
-  return path === TEACH_PATH || path.startsWith(`${TEACH_PATH}/`);
+  return path === base || path.startsWith(`${base}/`);
+}
+
+export function isTeachPath(pathname: string): boolean {
+  return isWithin(pathname, TEACH_PATH);
+}
+
+export function isAdminPath(pathname: string): boolean {
+  return isWithin(pathname, ADMIN_PATH);
 }

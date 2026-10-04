@@ -12,11 +12,11 @@ import { ariaCurrentFor, NAV_GROUPS, visibleGroups } from "./nav-routes";
  */
 export function SiteNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const { canTeach } = useAccess();
+  const access = useAccess();
 
   return (
     <nav aria-label="Main" className="grid gap-6">
-      {visibleGroups(NAV_GROUPS, canTeach).map((group) => (
+      {visibleGroups(NAV_GROUPS, access).map((group) => (
         <div key={group.label}>
           <h2 className="px-3 pb-2 text-meta text-muted-foreground">{group.label}</h2>
           <ul className="grid gap-1">

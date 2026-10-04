@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NAV_GROUPS, visibleGroups } from "@/components/layout/nav-routes";
-import { canLearn, canTeach, isTeachPath, parseAuthContext, STUDENT_FLOOR } from "./access";
+import { canAdminister, canLearn, canTeach, isAdminPath, isTeachPath, parseAuthContext, STUDENT_FLOOR } from "./access";
 
 describe("parseAuthContext", () => {
   it("uses the core's verified Account identity and active flag for access", () => {
@@ -72,19 +72,36 @@ describe("canLearn", () => {
   });
 });
 
-describe("isTeachPath", () => {
-  it("matches the Teach section and nothing that only starts the same way", () => {
+describe("canAdminister", () => {
+  const account = { accountId: "account-1", active: true } as const;
+  it("requires an Administrator with current online authority", () => {
+    expect(canAdminister({ ...account, role: "admin", approved: false, readOnly: false, source: "onlineGate" })).toBe(true);
+    expect(canAdminister({ ...account, role: "admin", approved: true, readOnly: false, source: "offlineVerified" })).toBe(false);
+    expect(canAdminister({ ...account, role: "teacher", approved: true, readOnly: false, source: "onlineGate" })).toBe(false);
+    expect(canAdminister(STUDENT_FLOOR)).toBe(false);
+  });
+});
+
+describe("section paths", () => {
+  it("match their section and nothing that only starts the same way", () => {
     expect(isTeachPath("/teach")).toBe(true);
-    expect(isTeachPath("/teach/")).toBe(true);
     expect(isTeachPath("/teach/grades")).toBe(true);
     expect(isTeachPath("/teacher")).toBe(false);
-    expect(isTeachPath("/modules")).toBe(false);
+    expect(isAdminPath("/admin/")).toBe(true);
+    expect(isAdminPath("/admin/people")).toBe(true);
+    expect(isAdminPath("/administrator")).toBe(false);
   });
 });
 
 describe("navigation", () => {
-  it("lists the Teach group only for teachers", () => {
-    expect(visibleGroups(NAV_GROUPS, false).map((group) => group.label)).toEqual(["Learn", "On this device"]);
-    expect(visibleGroups(NAV_GROUPS, true).map((group) => group.label)).toEqual(["Learn", "Teach", "On this device"]);
+  const labels = (canTeachValue: boolean, canAdministerValue: boolean) =>
+    visibleGroups(NAV_GROUPS, { canTeach: canTeachValue, canAdminister: canAdministerValue }).map(
+      (group) => group.label,
+    );
+
+  it("shows each role only its own groups", () => {
+    expect(labels(false, false)).toEqual(["Learn", "On this device"]);
+    expect(labels(true, false)).toEqual(["Learn", "Teach", "On this device"]);
+    expect(labels(false, true)).toEqual(["Learn", "Administration", "On this device"]);
   });
 });

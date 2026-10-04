@@ -34,11 +34,12 @@ export function PageHeader({ title, icon: Icon, description, context, actions, i
             </span>
           ) : null}
           <div className="min-w-0">
-            <h1 id={id} tabIndex={-1} className="text-page font-semibold text-balance">
+            {/* overflow-wrap:anywhere lets long unbroken values (emails, ids) wrap instead of widening the page. */}
+            <h1 id={id} tabIndex={-1} className="text-page font-semibold text-balance [overflow-wrap:anywhere]">
               {title}
             </h1>
             {description ? (
-              <p className="mt-1 max-w-[62ch] text-muted-foreground">{description}</p>
+              <p className="mt-1 max-w-[62ch] text-muted-foreground [overflow-wrap:anywhere]">{description}</p>
             ) : null}
           </div>
         </div>

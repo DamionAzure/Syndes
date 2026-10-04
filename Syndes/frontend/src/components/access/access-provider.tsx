@@ -4,7 +4,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { canTeach, STUDENT_FLOOR, type AuthContext } from "@/lib/access/access";
+import { canAdminister, canTeach, STUDENT_FLOOR, type AuthContext } from "@/lib/access/access";
 import { resolveAccess } from "@/lib/access/access-bridge";
 import { supabase } from "@/lib/supabase";
 import { setActiveAccountId } from "@/lib/active-account";
@@ -14,6 +14,7 @@ export type AccessState = {
   status: "checking" | "ready";
   context: AuthContext;
   canTeach: boolean;
+  canAdminister: boolean;
   /** Verified native Account identity; local stores use this partition only. */
   accountId: string | null;
   error: string | null;
@@ -24,6 +25,7 @@ const CHECKING: AccessState = {
   status: "checking",
   context: STUDENT_FLOOR,
   canTeach: false,
+  canAdminister: false,
   accountId: null,
   error: null,
   signOut: async () => {},
@@ -52,7 +54,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     await signOutAccount(() => {
       setActiveAccountId(null);
-      setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, accountId: null, error: null, signOut });
+      setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, canAdminister: false, accountId: null, error: null, signOut });
     });
   }, []);
 
@@ -65,11 +67,11 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         const context = await reconcile(session);
         if (!mounted || current !== revision) return;
         setActiveAccountId(context.accountId);
-        setState({ status: "ready", context, canTeach: canTeach(context), accountId: context.accountId, error: null, signOut });
+        setState({ status: "ready", context, canTeach: canTeach(context), canAdminister: canAdminister(context), accountId: context.accountId, error: null, signOut });
       } catch (cause) {
         if (!mounted || current !== revision) return;
         setActiveAccountId(null);
-        setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, accountId: null,
+        setState({ status: "ready", context: STUDENT_FLOOR, canTeach: false, canAdminister: false, accountId: null,
           error: cause instanceof Error ? cause.message : "Account access could not be checked.", signOut });
       }
     };

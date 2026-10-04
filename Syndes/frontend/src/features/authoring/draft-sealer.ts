@@ -1,6 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isModule, readAppError } from "@/lib/bridge";
 import { publishModule } from "@/lib/moduleStore";
-import type { Module } from "@/lib/types";
 import type { DraftModuleFile } from "./module-file";
 
 export type SealOutcome =
@@ -22,11 +22,14 @@ const activeSealer: DraftSealer = {
     try {
       // Native sealing checks Teacher permission online before touching the
       // plaintext Draft. Publishing checks it again at the Supabase boundary.
-      const sealed = await invoke<Module>("seal_module", { draft: file });
+      const sealed: unknown = await invoke("seal_module", { draft: file });
+      if (!isModule(sealed)) {
+        return { status: "invalid", message: "The core returned an unexpected sealed module." };
+      }
       await publishModule(sealed);
       return { status: "published" };
     } catch (error) {
-      return { status: "invalid", message: error instanceof Error ? error.message : String(error) };
+      return { status: "invalid", message: readAppError(error).message };
     }
   },
 };

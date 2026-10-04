@@ -6,6 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { standaloneLink } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
 import { QUARTERS } from "../class-record-types";
 import { classLabel, sectionLabel, useClassRecords } from "../class-record-source";
 import { computeGrade, fullName, MODULE_STATUS_LABEL, moduleStatus } from "../grading";
@@ -45,7 +47,7 @@ export function LearnerProfileView() {
         title={fullName(learner)}
         description={section ? sectionLabel(section) : "No section"}
         context={
-          <Link href={classRecordRoutes.learners()} className="text-meta text-primary underline-offset-4 hover:underline">
+          <Link href={classRecordRoutes.learners()} className={cn(standaloneLink, "text-meta")}>
             All learners
           </Link>
         }
@@ -65,7 +67,7 @@ export function LearnerProfileView() {
             ].map(([term, detail]) => (
               <div key={term} className="grid gap-0.5 border-b border-border pb-3 last:border-0 last:pb-0">
                 <dt className="text-meta text-muted-foreground">{term}</dt>
-                <dd className="tabular-nums">{detail}</dd>
+                <dd className="tabular-nums [overflow-wrap:anywhere]">{detail}</dd>
               </div>
             ))}
           </dl>

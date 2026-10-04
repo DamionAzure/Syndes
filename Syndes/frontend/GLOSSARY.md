@@ -43,7 +43,7 @@ The person who prepares and reviews Module content before Learners use it. A Tea
 _Avoid_: Author, admin
 
 **Administrator**:
-A person authorized to approve Account access and grant or remove Teacher access. An Administrator may also teach and study.
+A person authorized to approve Account access, grant or remove Teacher access, and manage the school directory. An Administrator may also teach and study.
 _Avoid_: Teacher
 
 **Account**:
@@ -105,3 +105,29 @@ _Avoid_: Mark, rating
 **Schedule**:
 The Teacher's recurring weekly periods: classes, advisory, and consultation hours.
 _Avoid_: Timetable, calendar
+
+## Administration
+
+**Waiting for access**:
+The state of an Account that has signed in but has no Section and no Teacher access. Signing in alone grants nothing until an Administrator places them.
+_Avoid_: Pending, unverified
+
+**Enrollment**:
+A Learner's place in one Section for a period of time. It ends as moved, dropped, or transferred out, and it is never deleted.
+_Avoid_: Registration, membership
+
+**Assignment**:
+A Teacher teaching one Class for a period of time. A Class has at most one current Assignment.
+_Avoid_: Load, allocation
+
+**Access removed**:
+The state of an Account that can no longer use Syndes. Its records stay, and an Administrator can restore it with Learn only.
+_Avoid_: Banned, deleted
+
+**Activity**:
+The append-only record of every Administrator change, with who made it and when.
+_Avoid_: Audit trail (in screens), history
+
+**Statistics snapshot**:
+The school's counts taken at one moment, usually when a grading period's grades are final. Passing and failing rates are shares of assessed Learners; the drop rate is a share of Learners enrolled when the school year began.
+_Avoid_: Report, dashboard

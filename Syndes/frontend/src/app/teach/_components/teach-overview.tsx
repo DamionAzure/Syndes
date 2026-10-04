@@ -12,6 +12,8 @@ import { ResultText } from "@/features/class-records/components/module-report";
 import { byFamilyName, fullName, LOW_RESULT_PERCENT, resultPercent } from "@/features/class-records/grading";
 import { classRecordRoutes } from "@/features/class-records/routes";
 import { TodayAgenda } from "@/features/schedule/components/today-agenda";
+import { standaloneLink } from "@/lib/link-styles";
+import { cn } from "@/lib/utils";
 
 const ATTENTION_LIMIT = 5;
 const DRAFT_LIMIT = 3;
@@ -59,7 +61,7 @@ export function TeachOverview() {
                   <li key={learner.id} className="grid gap-1 px-6 py-4">
                     <Link
                       href={classRecordRoutes.learner(learner.id)}
-                      className="font-medium text-primary underline-offset-4 hover:underline"
+                      className={cn(standaloneLink, "justify-self-start font-medium")}
                     >
                       {fullName(learner)}
                     </Link>
@@ -106,7 +108,7 @@ export function TeachOverview() {
                   <li key={draft.id} className="grid gap-1 px-6 py-4">
                     <Link
                       href={authoringRoutes.editor(draft.id)}
-                      className="font-medium text-primary underline-offset-4 hover:underline"
+                      className={cn(standaloneLink, "justify-self-start font-medium")}
                     >
                       {draftTitle(draft)}
                     </Link>

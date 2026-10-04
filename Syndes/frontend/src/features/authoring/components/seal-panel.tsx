@@ -64,13 +64,13 @@ export function SealPanel({
             <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
             {issues.length} {issues.length === 1 ? "thing" : "things"} to fix
           </p>
-          <ul className="grid gap-1 border-l border-border pl-3">
+          <ul className="grid border-l border-border">
             {issues.map((issue, index) => (
               <li key={`${issue.message}-${index}`}>
                 <button
                   type="button"
                   onClick={() => onShowIssue(issue)}
-                  className="min-h-9 text-left text-meta text-primary underline-offset-4 hover:underline"
+                  className="flex min-h-11 w-full items-center rounded-r-md py-2 pr-2 pl-3 text-left text-meta text-primary underline-offset-4 transition-colors hover:bg-surface-muted hover:underline"
                 >
                   {issue.message}
                 </button>

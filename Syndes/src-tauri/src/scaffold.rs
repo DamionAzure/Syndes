@@ -106,9 +106,8 @@ pub fn builtin_scaffolds() -> Vec<Scaffold> {
             grade_level: "elementary".to_string(),
             topic_hint: "Telling common nouns apart from proper nouns".to_string(),
             suggested_question_count: 5,
-            description:
-                "Identify naming words and sort them into common nouns and proper nouns."
-                    .to_string(),
+            description: "Identify naming words and sort them into common nouns and proper nouns."
+                .to_string(),
         },
         Scaffold {
             id: "fil_pangngalan".to_string(),
@@ -251,7 +250,10 @@ mod tests {
 
         assert_eq!(req.topic, scaffold.topic_hint);
         assert_eq!(req.subject.as_deref(), Some(scaffold.subject.as_str()));
-        assert_eq!(req.grade_level.as_deref(), Some(scaffold.grade_level.as_str()));
+        assert_eq!(
+            req.grade_level.as_deref(),
+            Some(scaffold.grade_level.as_str())
+        );
         assert_eq!(req.num_questions, Some(scaffold.suggested_question_count));
         assert!(req.source_text.is_none());
     }
@@ -286,7 +288,10 @@ mod tests {
         };
         let req = request_from_choice(&choice).unwrap();
         assert_eq!(req.topic, scaffold.topic_hint);
-        assert_eq!(req.grade_level.as_deref(), Some(scaffold.grade_level.as_str()));
+        assert_eq!(
+            req.grade_level.as_deref(),
+            Some(scaffold.grade_level.as_str())
+        );
     }
 
     #[test]
@@ -350,10 +355,7 @@ mod tests {
             .find(|m| m["role"] == "user")
             .expect("has a user message");
         assert!(
-            user["content"]
-                .as_str()
-                .unwrap()
-                .contains(&resolved_topic),
+            user["content"].as_str().unwrap().contains(&resolved_topic),
             "user message carries the resolved topic"
         );
     }

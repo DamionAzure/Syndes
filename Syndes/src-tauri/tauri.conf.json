@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.damion.syndes",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev --prefix frontend -- -p 1420",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build --prefix frontend",
     "frontendDist": "../frontend/out"
   },
   "app": {

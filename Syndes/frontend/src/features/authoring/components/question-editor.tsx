@@ -50,7 +50,7 @@ export function QuestionEditor({
         <ItemControls itemLabel={label.toLowerCase()} index={number - 1} total={total} onMove={onMove} onRemove={onRemove} />
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_7rem]">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-[minmax(0,1fr)_6rem]">
         <Field>
           <FieldLabel htmlFor={`question-${question.id}-kind`}>Answer type</FieldLabel>
           <Select

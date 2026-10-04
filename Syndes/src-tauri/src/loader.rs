@@ -26,7 +26,8 @@ pub fn load_module(path: &str) -> Result<Module, AppError> {
     let raw = fs::read_to_string(Path::new(path))
         .map_err(|e| AppError::ModuleNotFound(format!("{path}: {e}")))?;
 
-    let module: Module = serde_json::from_str(&raw).map_err(|e| AppError::ParseError(e.to_string()))?;
+    let module: Module =
+        serde_json::from_str(&raw).map_err(|e| AppError::ParseError(e.to_string()))?;
 
     validate(&module)?;
     Ok(module)
@@ -78,7 +79,9 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
         )));
     }
     if quiz.questions.is_empty() {
-        return Err(AppError::ValidationError("quiz.questions must not be empty".to_string()));
+        return Err(AppError::ValidationError(
+            "quiz.questions must not be empty".to_string(),
+        ));
     }
 
     for q in &quiz.questions {
@@ -92,7 +95,10 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
             return Err(AppError::MissingField(format!("question[{}].salt", q.id)));
         }
         if q.answer_hash.trim().is_empty() {
-            return Err(AppError::MissingField(format!("question[{}].answer_hash", q.id)));
+            return Err(AppError::MissingField(format!(
+                "question[{}].answer_hash",
+                q.id
+            )));
         }
 
         let needs_options = OPTION_KINDS.contains(&q.kind.as_str());
@@ -112,7 +118,10 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
                 )));
             }
             None if needs_options => {
-                return Err(AppError::MissingField(format!("question[{}].options", q.id)));
+                return Err(AppError::MissingField(format!(
+                    "question[{}].options",
+                    q.id
+                )));
             }
             _ => {}
         }
@@ -124,7 +133,7 @@ pub(crate) fn validate(module: &Module) -> Result<(), AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{ModuleMeta, Quiz, Question};
+    use crate::model::{ModuleMeta, Question, Quiz};
 
     fn base_module() -> Module {
         Module {
@@ -171,7 +180,10 @@ mod tests {
         if let Some(quiz) = &mut m.quiz {
             quiz.questions[0].kind = "matching".to_string();
         }
-        assert!(matches!(validate(&m), Err(AppError::UnknownQuestionKind(_))));
+        assert!(matches!(
+            validate(&m),
+            Err(AppError::UnknownQuestionKind(_))
+        ));
     }
 
     #[test]
@@ -191,5 +203,58 @@ mod tests {
             quiz.questions[0].options = Some(vec!["a".to_string()]);
         }
         assert!(matches!(validate(&m), Err(AppError::ValidationError(_))));
+    }
+
+    // --- additionalProperties agreement with module.schema.json -----------------
+    // The schema locks module/lesson/quiz/question to additionalProperties:false,
+    // but keeps the TOP LEVEL permissive (additionalProperties:true, e.g. `_note`).
+    // These tests pin that the Rust parser now agrees on both counts.
+
+    /// A top-level unknown key (like the fixture's `_note`) is accepted — the
+    /// top-level object is forward-compatible by design.
+    #[test]
+    fn accepts_unknown_top_level_field() {
+        let json = r#"{
+            "schema_version": "1.0",
+            "_note": "demo fixture note, ignored by the core",
+            "module": { "id": "mod_1", "type": "lesson", "title": "T" }
+        }"#;
+        let module: Module = serde_json::from_str(json).expect("top-level extras are allowed");
+        assert_eq!(module.module.id, "mod_1");
+    }
+
+    /// An unknown key INSIDE `module` is rejected at parse time (deny_unknown_fields),
+    /// matching the schema's additionalProperties:false on that object.
+    #[test]
+    fn rejects_unknown_field_inside_module() {
+        let json = r#"{
+            "schema_version": "1.0",
+            "module": { "id": "mod_1", "type": "lesson", "title": "T", "colour": "blue" }
+        }"#;
+        let parsed: Result<Module, _> = serde_json::from_str(json);
+        assert!(parsed.is_err(), "stray key under `module` must be rejected");
+    }
+
+    /// An unknown key inside a `question` is rejected at parse time.
+    #[test]
+    fn rejects_unknown_field_inside_question() {
+        let json = r#"{
+            "schema_version": "1.0",
+            "module": { "id": "mod_1", "type": "quiz", "title": "T" },
+            "quiz": {
+                "hash_algo": "SHA-256",
+                "normalization": "lowercase|trim|collapse-ws|strip-punct",
+                "questions": [{
+                    "id": "q1", "kind": "identification", "prompt": "p",
+                    "salt": "s", "answer_hash": "h", "points": 1,
+                    "weight": 5
+                }]
+            }
+        }"#;
+        let parsed: Result<Module, _> = serde_json::from_str(json);
+        assert!(
+            parsed.is_err(),
+            "stray key under a question must be rejected"
+        );
     }
 }

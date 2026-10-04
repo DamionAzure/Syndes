@@ -46,9 +46,17 @@ pub struct SessionStore {
 }
 
 impl SessionStore {
-    /// Open (or create) the database at `path` and run migrations (creates the
-    /// `cached_session` table). Returns a `StorageError` on any SQLite failure
-    /// (Req 8.3).
+    /// Open (or create) the database at `path`, apply durability/concurrency
+    /// pragmas, and run migrations (creates the `cached_session` table). Returns a
+    /// `StorageError` only when a fresh database still cannot be opened (Req 8.3).
+    ///
+    /// Corruption self-recovery: the session cache is DISPOSABLE by design (losing
+    /// it just forces the next login to happen online). So if opening or migrating
+    /// an EXISTING file fails in a way that looks like on-disk corruption, we
+    /// delete the file once and recreate it from scratch rather than leaving the
+    /// app without a usable cache. This mirrors the "never panic the app over the
+    /// cache" stance in `lib.rs`: a corrupt cache degrades to "no session"
+    /// (Layer 1 floor), it does not take auth down.
     ///
     /// Confirming the Rust_Core app-data tables (Req 1.5/1.6) is a SEPARATE step
     /// (`confirm_app_data_tables`) rather than part of `open`, so that opening the
@@ -56,11 +64,34 @@ impl SessionStore {
     /// not been provisioned yet. The caller runs the confirmation when those
     /// tables are expected to exist.
     pub fn open(path: &str) -> Result<SessionStore, AuthError> {
+        match Self::open_at(path) {
+            Ok(store) => Ok(store),
+            // A corrupt or unreadable existing file: discard it and retry once on a
+            // clean slate. If the retry also fails (e.g. the directory is truly
+            // unwritable), surface that second error — there is nothing left to
+            // recover.
+            Err(_) if std::path::Path::new(path).exists() => {
+                let _ = std::fs::remove_file(path);
+                // Best-effort removal of WAL/SHM sidecars so a half-written WAL
+                // cannot resurrect the corruption on reopen.
+                let _ = std::fs::remove_file(format!("{path}-wal"));
+                let _ = std::fs::remove_file(format!("{path}-shm"));
+                Self::open_at(path)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// Open a file-backed store without the corruption-recovery retry: open the
+    /// connection, apply pragmas, migrate. Used by `open` (which layers recovery
+    /// on top).
+    fn open_at(path: &str) -> Result<SessionStore, AuthError> {
         let conn = Connection::open(path)
             .map_err(|e| AuthError::StorageError(format!("open database: {e}")))?;
         let store = SessionStore {
             conn: std::sync::Mutex::new(conn),
         };
+        store.configure()?;
         store.migrate()?;
         Ok(store)
     }
@@ -75,8 +106,35 @@ impl SessionStore {
         let store = SessionStore {
             conn: std::sync::Mutex::new(conn),
         };
+        store.configure()?;
         store.migrate()?;
         Ok(store)
+    }
+
+    /// Apply connection pragmas that make the cache resilient under the
+    /// WebView-plus-commands access pattern, without changing stored data:
+    ///
+    /// * `journal_mode=WAL` — readers never block the single writer, so a UI read
+    ///   racing a login write will not hit `SQLITE_BUSY`. (On an in-memory DB this
+    ///   is a no-op; SQLite keeps `memory` journaling.)
+    /// * `busy_timeout=5000` — if a lock IS contended, wait up to 5s rather than
+    ///   failing immediately.
+    /// * `synchronous=NORMAL` — the safe pairing with WAL: durable across app
+    ///   crashes, only at risk on OS/power loss, which for a rebuildable cache is
+    ///   an acceptable trade for far fewer fsyncs.
+    /// * `foreign_keys=ON` — defensive; the cache has no FKs today but this keeps
+    ///   the connection correct if any are added.
+    fn configure(&self) -> Result<(), AuthError> {
+        let conn = self.lock()?;
+        // WAL returns a row ("wal"); query_row consumes it. The rest are silent.
+        conn.query_row("pragma journal_mode = WAL", [], |_| Ok(()))
+            .map_err(|e| AuthError::StorageError(format!("set journal_mode: {e}")))?;
+        conn.execute_batch(
+            "pragma busy_timeout = 5000;
+             pragma synchronous = NORMAL;
+             pragma foreign_keys = ON;",
+        )
+        .map_err(|e| AuthError::StorageError(format!("set pragmas: {e}")))
     }
 
     /// Create the `cached_session` table if absent. The schema matches the design
@@ -390,5 +448,70 @@ mod tests {
             }
         }
         assert!(store.confirm_app_data_tables().is_ok());
+    }
+
+    #[test]
+    fn file_store_recovers_from_a_corrupt_database() {
+        // Write garbage to a path, then open it: the corrupt file is discarded
+        // and a fresh, usable cache is created in its place (disposable-cache
+        // recovery). The store must be fully functional afterwards.
+        let dir = std::env::temp_dir();
+        let path = dir
+            .join(format!(
+                "syndes-sessioncache-test-{}.sqlite3",
+                std::process::id()
+            ))
+            .to_string_lossy()
+            .to_string();
+        // Clean any leftover from a previous run.
+        let _ = std::fs::remove_file(&path);
+        std::fs::write(&path, b"this is not a sqlite database header at all").unwrap();
+
+        let store = SessionStore::open(&path).expect("open must recover from corruption");
+        // Fresh table => no session, and writes work.
+        assert_eq!(store.load_cached_session().unwrap(), None);
+        store
+            .store_cached_session(&sample("u1", "teacher"))
+            .unwrap();
+        assert_eq!(
+            store.load_cached_session().unwrap().unwrap().role,
+            "teacher"
+        );
+
+        // Drop before cleanup so the connection (and WAL/SHM) is released.
+        drop(store);
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{path}-wal"));
+        let _ = std::fs::remove_file(format!("{path}-shm"));
+    }
+
+    #[test]
+    fn file_store_opens_and_persists_across_reopen() {
+        // Confirms the pragma/open path works for a real file and that data
+        // written under WAL survives closing and reopening the store.
+        let dir = std::env::temp_dir();
+        let path = dir
+            .join(format!(
+                "syndes-sessioncache-persist-{}.sqlite3",
+                std::process::id()
+            ))
+            .to_string_lossy()
+            .to_string();
+        let _ = std::fs::remove_file(&path);
+
+        {
+            let store = SessionStore::open(&path).unwrap();
+            store.store_cached_session(&sample("u1", "admin")).unwrap();
+        }
+        {
+            let store = SessionStore::open(&path).unwrap();
+            let loaded = store.load_cached_session().unwrap().unwrap();
+            assert_eq!(loaded.role, "admin");
+            assert_eq!(loaded.user_id, "u1");
+        }
+
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(format!("{path}-wal"));
+        let _ = std::fs::remove_file(format!("{path}-shm"));
     }
 }

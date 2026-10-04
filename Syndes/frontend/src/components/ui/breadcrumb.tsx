@@ -47,7 +47,11 @@ function BreadcrumbLink({
     defaultTagName: "a",
     props: mergeProps<"a">(
       {
-        className: cn("transition-colors hover:text-foreground", className),
+        // A taller hit area on touch without changing how the trail reads.
+        className: cn(
+          "inline-flex min-h-6 items-center rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline pointer-coarse:min-h-11",
+          className
+        ),
       },
       props
     ),

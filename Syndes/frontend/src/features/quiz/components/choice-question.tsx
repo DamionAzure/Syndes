@@ -19,7 +19,7 @@ export function ChoiceQuestion({ question, answer, onAnswer, headingRef }: Choic
 
   return (
     <div>
-      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-page font-semibold">
+      <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-section font-semibold text-balance sm:text-page">
         {question.prompt}
       </h2>
       <RadioGroup
@@ -34,7 +34,7 @@ export function ChoiceQuestion({ question, answer, onAnswer, headingRef }: Choic
             <FieldLabel
               key={option.id}
               htmlFor={optionId}
-              className="w-full cursor-pointer rounded-md border-2 border-border bg-surface has-data-checked:border-primary has-data-checked:bg-surface-muted dark:has-data-checked:border-primary dark:has-data-checked:bg-surface-muted"
+              className="w-full cursor-pointer rounded-md border-2 border-border bg-surface transition-colors hover:border-primary/50 has-data-checked:border-primary has-data-checked:bg-surface-muted dark:has-data-checked:border-primary dark:has-data-checked:bg-surface-muted"
             >
               <Field orientation="horizontal" className="min-h-(--control-height) items-center gap-4 px-4">
                 <RadioGroupItem value={option.id} id={optionId} />

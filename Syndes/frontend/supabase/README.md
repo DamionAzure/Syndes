@@ -19,6 +19,13 @@ process. The client never receives a service-role key or writes access rows.
   before applying a missing migration; an existing table is not proof that its
   earlier migrations were recorded.
 
+The school directory SQL from `main` is retained as
+`proposals/school_access.sql`. It is not a migration: its `public.profiles`
+role and status would form a second authority alongside
+`app_private.account_access`. Reconcile those models and review ADR-0008 before
+creating and applying a school directory migration. The Administration screens
+currently use fictional local sample data.
+
 On 2026-10-04, the existing Syndes project had the `modules` table and both
 validation/update triggers, with RLS enabled, but no recorded migrations. Its
 published-read policy allowed anonymous access and `is_approved()` was absent.

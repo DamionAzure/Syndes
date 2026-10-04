@@ -16,8 +16,8 @@ it("scores saved answers through the desktop core and reports per-Question revie
       { questionId: "q2", correct: false, points: 0 },
     ],
   });
-  const { desktopQuizScorer } = await import("./quiz-scorer");
-  expect(await desktopQuizScorer.score("mod_science", { q1: "True", q2: "" })).toEqual({
+  const { tauriQuizScorer } = await import("./tauri-quiz-scorer");
+  expect(await tauriQuizScorer.score("mod_science", { q1: "True", q2: "" })).toEqual({
     correct: 1,
     total: 2,
     questions: [

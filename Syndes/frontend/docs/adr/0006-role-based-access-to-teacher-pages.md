@@ -15,13 +15,11 @@ Approved Students may use Learn. Teachers and Administrators may also use Teach 
 - `lib/access/access-bridge.ts` calls `auth_resolve_role`. Outside Tauri in production, on any error, or on any unexpected payload, it resolves to the Student floor.
 - `TeachGuard` (in `app/teach/layout.tsx`) asks again with `requirePrivileged: true` each time someone enters the Teach section.
   - It renders nothing from the page until the core answers.
-  - It sends anyone who isn't a Teacher to Home with `router.replace`.
+  - It sends anyone without current Teacher or Administrator authority to Home with `router.replace`.
 - The prerendered HTML for every `/teach` route shows only the checking state.
-- The Teach nav group is listed only after the core confirms a Teacher. While the check is running, it stays hidden.
+- The Teach nav group is listed only after the core confirms Teacher or Administrator authority. While the check is running, it stays hidden.
 
-**Admin counts as a Teacher**, matching `Role::is_privileged` in the core.
-
-**For development only:** in plain `next dev` there is no Rust core. Setting `NEXT_PUBLIC_SYNDES_DEV_ROLE=teacher` (or `admin`) stands in for a verified Teacher.
+**For development only:** in plain `next dev` there is no Rust core. Setting `NEXT_PUBLIC_SYNDES_DEV_ROLE=teacher` (or `admin`) stands in for a verified Teacher (or Administrator).
 - It is read only when `NODE_ENV` is `development` and the page is outside Tauri.
 - `next build` sets `NODE_ENV` to production, so shipped builds ignore it.
 - Example: `$env:NEXT_PUBLIC_SYNDES_DEV_ROLE="teacher"; npm run dev`.
